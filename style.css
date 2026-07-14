@@ -1,0 +1,106 @@
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial,sans-serif;
+}
+
+body{
+    background:#0f172a;
+    color:white;
+    padding:20px;
+}
+
+.header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:25px;
+}
+
+.balance{
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+
+.balance span{
+    background:#1e293b;
+    padding:8px 15px;
+    border-radius:12px;
+}
+
+.plus{
+    width:35px;
+    height:35px;
+    background:#2563eb;
+    border-radius:50%;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    font-size:22px;
+}
+
+.card{
+    background:#1e293b;
+    border-radius:20px;
+    padding:20px;
+    display:flex;
+    gap:15px;
+    align-items:center;
+    cursor:pointer;
+    margin-bottom:20px;
+}
+
+.emoji{
+    font-size:50px;
+}
+
+.stars-page{
+    background:#1e293b;
+    padding:20px;
+    border-radius:20px;
+}
+
+.stars-page input{
+    width:100%;
+    padding:14px;
+    margin:12px 0;
+    border:none;
+    border-radius:12px;
+    background:#334155;
+    color:white;
+}
+
+.star-grid{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:10px;
+    margin:15px 0;
+}
+
+.star-btn,
+#myself,
+#buyBtn{
+    padding:14px;
+    border:none;
+    border-radius:12px;
+    background:#2563eb;
+    color:white;
+    font-size:16px;
+    cursor:pointer;
+}
+
+#buyBtn{
+    width:100%;
+    margin-top:20px;
+    font-size:18px;
+}
+
+#errorText{
+    color: #ff4d4d;
+    font-size: 14px;
+    margin-top: 8px;
+    margin-bottom: 8px;
+    display: none;
+}

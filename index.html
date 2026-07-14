@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="uz">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Arzon Stars</title>
+
+<link rel="stylesheet" href="style.css">
+
+</head>
+
+<body>
+
+<div class="header">
+
+<h1>Arzon Stars</h1>
+
+<div class="balance">
+
+<span>783 so'm</span>
+
+<div class="plus">+</div>
+
+</div>
+
+</div>
+
+<div class="cards">
+
+<div class="card" id="openStars">
+
+    <div class="emoji">⭐</div>
+
+    <div>
+        <h2>Stars olish</h2>
+        <p>Telegram Stars xarid qilish</p>
+    </div>
+
+</div>
+
+<div class="stars-page" id="starsPage">
+
+    <h2>⭐ Stars olish</h2>
+
+    <input type="text" id="username" placeholder="@username">
+
+    <button id="myself">👤 O'zimga</button>
+
+    <h3>Stars miqdori</h3>
+    <span style="float:right;font-size:14px;color:#999;">
+        Min 50 · Max 10000
+    </span>
+</h3>
+
+<input
+    type="number"
+    id="customStars"
+    min="50"
+    max="10000"
+    placeholder="50 - 10000">
+
+    <div class="star-grid">
+
+        <button class="star-btn">50</button>
+        <button class="star-btn">100</button>
+        <button class="star-btn">250</button>
+        <button class="star-btn">500</button>
+
+    </div>
+
+    <p id="errorText"></p>
+    <h3 id="totalPrice">
+        Jami: 0 so'm
+    </h3>
+
+    <button id="buyBtn">
+        ⭐ Sotib olish
+    </button>
+
+</div>
+
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
