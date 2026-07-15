@@ -99,18 +99,13 @@ buyBtn.onclick = () => {
     let totalPrice = stars * price;
 
     const order = {
-    username: username,
-    stars: stars,
-    total: totalPrice
-};
+        username: username,
+        stars: stars,
+        total: totalPrice
+    };
 
-console.log(order);
+    tg.sendData(JSON.stringify(order));
 
-alert(
-"Buyurtma tayyor!\n\n" +
-"Username: " + username + "\n" +
-"Stars: " + stars + "\n" +
-"Jami: " + totalPrice.toLocaleString() + " so'm"
-);
+    tg.close();
 
 };
