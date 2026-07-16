@@ -92,7 +92,7 @@ document.getElementById("myself").onclick = () => {
 
 };
 
-buyBtn.onclick = () => {
+buyBtn.onclick = async () => {
 
     let username = document.getElementById("username").value.trim();
     let stars = Number(input.value);
@@ -104,8 +104,26 @@ buyBtn.onclick = () => {
         total: totalPrice
     };
 
-    tg.sendData(JSON.stringify(order));
+    try {
 
-    tg.close();
+        const response = await fetch("https://telegram-stars-olish.onrender.com/order", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(order)
+        });
+
+        const result = await response.json();
+
+        alert(result.message);
+
+        tg.close();
+
+    } catch (e) {
+
+        alert("Server bilan bog'lanib bo'lmadi!");
+
+    }
 
 };
