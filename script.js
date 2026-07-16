@@ -118,8 +118,6 @@ buyBtn.onclick = async () => {
 
         alert(result.message);
 
-        tg.close();
-
     } catch (e) {
 
         alert("Server bilan bog'lanib bo'lmadi!");
