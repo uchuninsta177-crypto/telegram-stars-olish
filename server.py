@@ -3,7 +3,7 @@ from flask_cors import CORS
 import requests
 import os
 
-app = Flask(name)
+app = Flask(__name__)
 CORS(app)
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -41,5 +41,5 @@ def order():
         "message": "Buyurtma qabul qilindi"
     })
 
-if name == "main":
+if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
