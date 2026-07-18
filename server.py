@@ -37,9 +37,9 @@ def order():
     )
 
     return jsonify({
-        "success": True,
-    "message": "✔️Buyurtma qabul qilindi! 
-    Tez orada starsingiz yetkazib beriladi!"})
+    "success": True,
+    "message": "✅ Buyurtma qabul qilindi!"
+})
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
