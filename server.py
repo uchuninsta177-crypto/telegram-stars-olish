@@ -38,7 +38,7 @@ def order():
 
     return jsonify({
     "success": True,
-    "message": "✅ Buyurtma qabul qilindi!"
+    "message": "✅ Buyurtma qabul qilindi! Starsingiz tez orada yetkazib beramiz!"
 })
 
 if __name__ == "__main__":
