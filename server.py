@@ -3,7 +3,7 @@ from flask_cors import CORS
 import requests
 import os
 
-app = Flask(__name__)
+app = Flask(name)
 CORS(app)
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -15,18 +15,18 @@ def home():
 
 @app.route("/order", methods=["POST"])
 def order():
-    data = request.json
+    data = request.get_json()
 
     username = data.get("username")
     stars = data.get("stars")
     total = data.get("total")
 
-    text = f"""🛒 Yangi buyurtma
-
-👤 Username: {username}
-⭐ Stars: {stars}
-💰 Summa: {total:,} so'm
-"""
+    text = (
+        "🛒 Yangi buyurtma\n\n"
+        f"👤 Username: {username}\n"
+        f"⭐️ Stars: {stars}\n"
+        f"💰 Summa: {total:,} so'm"
+    )
 
     requests.post(
         f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
@@ -36,10 +36,8 @@ def order():
         }
     )
 
-    return jsonify({
-        "success": True,
-        "message": "Buyurtma qabul qilindi"
-    })
+    return jsonify({"success": True})
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+if name == "main":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
