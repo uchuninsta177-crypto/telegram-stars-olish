@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+import sqlite3
 from flask_cors import CORS
 import requests
 import os
@@ -12,6 +13,32 @@ CHAT_ID = "-1004457471821"
 @app.route("/")
 def home():
     return "Server ishlayapti!"
+
+@app.route("/balance/<int:user_id>")
+def get_user_balance(user_id):
+
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "SELECT balance FROM users WHERE user_id=?",
+        (user_id,)
+    )
+
+    row = cursor.fetchone()
+
+    conn.close()
+
+    if row:
+        return jsonify({
+            "success": True,
+            "balance": row[0]
+        })
+
+    return jsonify({
+        "success": False,
+        "balance": 0
+    })
 
 @app.route("/order", methods=["POST"])
 def order():
