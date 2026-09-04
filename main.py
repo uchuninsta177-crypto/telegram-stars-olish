@@ -11,7 +11,6 @@ user_id = context.user_data["target_user"]
 
     return ConversationHandler.END
 
-
 async def remove_balance_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -22,7 +21,6 @@ async def remove_balance_start(update: Update, context: ContextTypes.DEFAULT_TYP
     await query.message.reply_text("👤 User ID yuboring:")
     return WAIT_REMOVE_USER
 
-
 async def receive_remove_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         context.user_data["target_user"] = int(update.message.text)
@@ -32,7 +30,6 @@ async def receive_remove_user(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     await update.message.reply_text("💰 Ayiriladigan summani yuboring:")
     return WAIT_REMOVE_AMOUNT
-
 
 async def receive_remove_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
@@ -54,7 +51,6 @@ async def receive_remove_amount(update: Update, context: ContextTypes.DEFAULT_TY
     )
 
     return ConversationHandler.END
-
 
 if name == "main":
     app = ApplicationBuilder().token(BOT_TOKEN).build()
