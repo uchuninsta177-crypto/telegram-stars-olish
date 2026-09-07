@@ -84,10 +84,10 @@ async def show_gifts(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
 
     keyboard = [
-        [InlineKeyboardButton("🎂 Delicious Cake (15 Stars)", callback_data="gift_cake")],
-        [InlineKeyboardButton("⭐️ Green Star (25 Stars)", callback_data="gift_star")],
-        [InlineKeyboardButton("🧸 Teddy Bear (50 Stars)", callback_data="gift_bear")],
-        [InlineKeyboardButton("💍 Golden Ring (100 Stars)", callback_data="gift_ring")],
+        [InlineKeyboardButton("💝 🧸 (15 Stars)", callback_data="gift_cake")],
+        [InlineKeyboardButton("🌹 🎁 (25 Stars)", callback_data="gift_star")],
+        [InlineKeyboardButton("💐 🎂 🍾 🚀(50 Stars)", callback_data="gift_bear")],
+        [InlineKeyboardButton("💍 🏆 💎 (100 Stars)", callback_data="gift_ring")],
         [InlineKeyboardButton("⬅️ Orqaga", callback_data="back_to_main")]
     ]
 
