@@ -8,82 +8,167 @@
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background-color: var(--tg-theme-bg-color, #ffffff);
-            color: var(--tg-theme-text-color, #000000);
+            background-color: var(--tg-theme-bg-color, #f4f4f9);
+            color: var(--tg-theme-text-color, #222);
+            margin: 0;
             padding: 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
         }
-        .container {
-            width: 100%;
-            max-width: 350px;
-            text-align: center;
+        h2 {
+            margin-bottom: 5px;
+            color: var(--tg-theme-link-color, #2481cc);
         }
-        input {
-            width: 100%;
-            padding: 12px;
-            margin: 15px 0;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            font-size: 16px;
-            box-sizing: border-box;
-            text-align: center;
-        }
-        .price-box {
-            background: var(--tg-theme-secondary-bg-color, #f4f4f5);
-            padding: 15px;
-            border-radius: 10px;
-            font-size: 18px;
-            font-weight: bold;
+        p {
+            font-size: 14px;
+            color: #777;
             margin-bottom: 20px;
+        }
+        .options-container {
+            width: 100%;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .card {
+            background: var(--tg-theme-secondary-bg-color, #ffffff);
+            border: 2px solid transparent;
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: all 0.2s ease;
+        }
+        .card.active {
+            border-color: var(--tg-theme-button-color, #2481cc);
+            background-color: rgba(36, 129, 204, 0.05);
+        }
+        .card-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .icon {
+            font-size: 24px;
+        }
+        .title {
+            font-weight: bold;
+            font-size: 15px;
+        }
+        .price {
+            font-weight: bold;
+            font-size: 15px;
+            color: var(--tg-theme-button-color, #2481cc);
+        }
+        .custom-input {
+            width: 100%;
+            max-width: 400px;
+            margin-top: 15px;
+            box-sizing: border-box;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 12px;
+            font-size: 16px;
+            outline: none;
+            text-align: center;
+            background: var(--tg-theme-secondary-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #222);
+        }
+        .custom-input:focus {
+            border-color: var(--tg-theme-button-color, #2481cc);
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h2>⭐️ Telegram Stars Olish</h2>
-        <p>Qancha Stars kerakligini kiriting:</p>
 
-        <input type="number" id="starsInput" placeholder="Masalan: 100" value="50" min="1" oninput="calculatePrice()">
+    <h2>⭐️ Telegram Stars Olish</h2>
+    <p>O'zingizga kerakli Stars miqdorini tanlang:</p>
 
-        <div class="price-box">
-            Jami summa: <span id="totalPrice">0</span> so'm
+    <div class="options-container">
+        <div class="card active" onclick="selectPreset(50, 13500, this)">
+            <div class="card-info">
+                <span class="icon">⭐️</span>
+                <span class="title">50 Stars</span>
+            </div>
+            <span class="price">13,500 so'm</span>
+        </div>
+
+        <div class="card" onclick="selectPreset(100, 27000, this)">
+            <div class="card-info">
+                <span class="icon">⭐️</span>
+                <span class="title">100 Stars</span>
+            </div>
+            <span class="price">27,000 so'm</span>
+        </div>
+
+        <div class="card" onclick="selectPreset(250, 67500, this)">
+            <div class="card-info">
+                <span class="icon">⭐️</span>
+                <span class="title">250 Stars</span>
+            </div>
+            <span class="price">67,500 so'm</span>
+        </div>
+
+        <div class="card" onclick="selectPreset(500, 135000, this)">
+            <div class="card-info">
+                <span class="icon">⭐️</span>
+                <span class="title">500 Stars</span>
+            </div>
+            <span class="price">135,000 so'm</span>
         </div>
     </div>
+
+    <input type="number" id="customStars" class="custom-input" placeholder="Boshqa miqdor kiritish (masalan: 75)" oninput="handleCustomInput()">
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
 
         const STAR_PRICE = 270; // 1 Stars narxi (so'mda)
+        let selectedStars = 50;
+        let totalPrice = 13500;
 
-        function calculatePrice() {
-            const stars = parseInt(document.getElementById('starsInput').value) || 0;
-            const total = stars * STAR_PRICE;
-            document.getElementById('totalPrice').innerText = total.toLocaleString();
+        tg.MainButton.setText(`SOTIB OLISH (13,500 SO'M)`);
+        tg.MainButton.show();
 
-            if (stars > 0) {
-                tg.MainButton.setText(`SOTIB OLISH (${total.toLocaleString()} SO'M)`);
-                tg.MainButton.show();
-            } else {
-                tg.MainButton.hide();
+        function selectPreset(stars, price, element) {
+            document.querySelectorAll('.card').forEach(el => el.classList.remove('active'));
+            element.classList.add('active');
+            document.getElementById('customStars').value = '';
+
+            selectedStars = stars;
+            totalPrice = price;
+
+            tg.MainButton.setText(`SOTIB OLISH (${price.toLocaleString()} SO'M)`);
+        }
+
+        function handleCustomInput() {
+            const inputVal = parseInt(document.getElementById('customStars').value);
+
+            if (inputVal && inputVal > 0) {
+                document.querySelectorAll('.card').forEach(el => el.classList.remove('active'));
+                selectedStars = inputVal;
+                totalPrice = inputVal * STAR_PRICE;
+                tg.MainButton.setText(`SOTIB OLISH (${totalPrice.toLocaleString()} SO'M)`);
+            } else if (!inputVal) {
+                // Input bo'sh bo'lsa, birinchi paketni qaytarish
+                const firstCard = document.querySelector('.card');
+                selectPreset(50, 13500, firstCard);
             }
         }
 
-        calculatePrice();
-
         tg.MainButton.onClick(function() {
-            const stars = parseInt(document.getElementById('starsInput').value) || 0;
-            const total = stars * STAR_PRICE;
-
             const data = {
                 type: 'stars',
-                stars: stars,
-                total: total,
+                stars: selectedStars,
+                total: totalPrice,
                 username: tg.initDataUnsafe?.user?.username || "Noma'lum"
             };
-
             tg.sendData(JSON.stringify(data));
         });
     </script>
