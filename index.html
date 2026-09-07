@@ -1,176 +1,60 @@
 <!DOCTYPE html>
 <html lang="uz">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Telegram Stars Olish</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background-color: var(--tg-theme-bg-color, #f4f4f9);
-            color: var(--tg-theme-text-color, #222);
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        h2 {
-            margin-bottom: 5px;
-            color: var(--tg-theme-link-color, #2481cc);
-        }
-        p {
-            font-size: 14px;
-            color: #777;
-            margin-bottom: 20px;
-        }
-        .options-container {
-            width: 100%;
-            max-width: 400px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-        .card {
-            background: var(--tg-theme-secondary-bg-color, #ffffff);
-            border: 2px solid transparent;
-            border-radius: 12px;
-            padding: 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            transition: all 0.2s ease;
-        }
-        .card.active {
-            border-color: var(--tg-theme-button-color, #2481cc);
-            background-color: rgba(36, 129, 204, 0.05);
-        }
-        .card-info {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .icon {
-            font-size: 24px;
-        }
-        .title {
-            font-weight: bold;
-            font-size: 15px;
-        }
-        .price {
-            font-weight: bold;
-            font-size: 15px;
-            color: var(--tg-theme-button-color, #2481cc);
-        }
-        .custom-input {
-            width: 100%;
-            max-width: 400px;
-            margin-top: 15px;
-            box-sizing: border-box;
-            padding: 12px;
-            border: 2px solid #ddd;
-            border-radius: 12px;
-            font-size: 16px;
-            outline: none;
-            text-align: center;
-            background: var(--tg-theme-secondary-bg-color, #ffffff);
-            color: var(--tg-theme-text-color, #222);
-        }
-        .custom-input:focus {
-            border-color: var(--tg-theme-button-color, #2481cc);
-        }
-    </style>
+    <title>Arzon Stars</title>
+    <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
-    <h2>⭐️ Telegram Stars Olish</h2>
-    <p>O'zingizga kerakli Stars miqdorini tanlang:</p>
-
-    <div class="options-container">
-        <div class="card active" onclick="selectPreset(50, 13500, this)">
-            <div class="card-info">
-                <span class="icon">⭐️</span>
-                <span class="title">50 Stars</span>
-            </div>
-            <span class="price">13,500 so'm</span>
-        </div>
-
-        <div class="card" onclick="selectPreset(100, 27000, this)">
-            <div class="card-info">
-                <span class="icon">⭐️</span>
-                <span class="title">100 Stars</span>
-            </div>
-            <span class="price">27,000 so'm</span>
-        </div>
-
-        <div class="card" onclick="selectPreset(250, 67500, this)">
-            <div class="card-info">
-                <span class="icon">⭐️</span>
-                <span class="title">250 Stars</span>
-            </div>
-            <span class="price">67,500 so'm</span>
-        </div>
-
-        <div class="card" onclick="selectPreset(500, 135000, this)">
-            <div class="card-info">
-                <span class="icon">⭐️</span>
-                <span class="title">500 Stars</span>
-            </div>
-            <span class="price">135,000 so'm</span>
+    <div class="header">
+        <h1>Arzon Stars</h1>
+        <div class="balance">
+            <span id="balance">0 so'm</span>
+            <div class="plus">+</div>
         </div>
     </div>
 
-    <input type="number" id="customStars" class="custom-input" placeholder="Boshqa miqdor kiritish (masalan: 75)" oninput="handleCustomInput()">
+    <div class="cards">
+        <div class="card" id="openStars">
+            <div class="emoji">⭐️</div>
+            <div>
+                <h2>Stars olish</h2>
+                <p>Telegram Stars xarid qilish bo'limi</p>
+            </div>
+        </div>
+    </div>
 
-    <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand();
+    <div class="stars-page" id="starsPage">
+        <h2>username kiriting 👇</h2>
+        <input type="text" id="username" placeholder="@username">
+        <button id="myself">👤 O'zimga</button>
 
-        const STAR_PRICE = 270; // 1 Stars narxi (so'mda)
-        let selectedStars = 50;
-        let totalPrice = 13500;
+        <h3>Stars miqdori</h3>
+        <span style="float:right;font-size:14px;color:#999;">
+            Min 50 · Max 10000
+        </span>
 
-        tg.MainButton.setText(`SOTIB OLISH (13,500 SO'M)`);
-        tg.MainButton.show();
+        <input type="number" id="customStars" min="50" max="10000" placeholder="50 - 10000">
 
-        function selectPreset(stars, price, element) {
-            document.querySelectorAll('.card').forEach(el => el.classList.remove('active'));
-            element.classList.add('active');
-            document.getElementById('customStars').value = '';
+        <div class="star-grid">
+            <button class="star-btn">50</button>
+            <button class="star-btn">100</button>
+            <button class="star-btn">250</button>
+            <button class="star-btn">500</button>
+        </div>
 
-            selectedStars = stars;
-            totalPrice = price;
+        <p id="errorText"></p>
+        <h3 id="totalPrice">Jami: 0 so'm</h3>
 
-            tg.MainButton.setText(`SOTIB OLISH (${price.toLocaleString()} SO'M)`);
-        }
+        <button id="buyBtn">⭐️ Sotib olish</button>
+    </div>
 
-        function handleCustomInput() {
-            const inputVal = parseInt(document.getElementById('customStars').value);
-
-            if (inputVal && inputVal > 0) {
-                document.querySelectorAll('.card').forEach(el => el.classList.remove('active'));
-                selectedStars = inputVal;
-                totalPrice = inputVal * STAR_PRICE;
-                tg.MainButton.setText(`SOTIB OLISH (${totalPrice.toLocaleString()} SO'M)`);
-            } else if (!inputVal) {
-                // Input bo'sh bo'lsa, birinchi paketni qaytarish
-                const firstCard = document.querySelector('.card');
-                selectPreset(50, 13500, firstCard);
-            }
-        }
-
-        tg.MainButton.onClick(function() {
-            const data = {
-                type: 'stars',
-                stars: selectedStars,
-                total: totalPrice,
-                username: tg.initDataUnsafe?.user?.username || "Noma'lum"
-            };
-            tg.sendData(JSON.stringify(data));
-        });
-    </script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="script.js"></script>
 </body>
+
 </html>
