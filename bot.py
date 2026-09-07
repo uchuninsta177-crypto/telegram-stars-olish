@@ -14,7 +14,7 @@ from telegram.ext import (
     filters,
 )
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+BOT_TOKEN = "8734389060:AAGLkocTeMOrpPsk1vrjBny3ares9CMTa8Y"
 GROUP_ID = -1004457471821
 ADMIN_ID = 8061937333
 
@@ -57,7 +57,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ],
         [
             InlineKeyboardButton(
-                "💎 Premium olish",
+                "🎁     GIFT olish",
                 web_app=WebAppInfo(
                     url="https://uchuninsta177-crypto.github.io/telegram-stars-olish/"
                 ),
@@ -79,19 +79,25 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
-
 async def webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = json.loads(update.effective_message.web_app_data.data)
 
-    text = (
-        "🛒 Yangi buyurtma\n\n"
-        f"👤 Username: {data['username']}\n"
-        f"⭐️ Stars: {data['stars']}\n"
-        f"💰 Jami: {data['total']:,} so'm"
-    )
+    if data.get('type') == 'gift':
+        text = (
+            "🎁 **Yangi Gift Buyurtma!**\n\n"
+            f"👤 **Foydalanuvchi:** @{data['username']}\n"
+            f"🎁 **Gift nomi:** {data['gift_name']}\n"
+            f"⭐️ **Narxi:** {data['stars']} Stars"
+        )
+    else:
+        text = (
+            "🛒 **Yangi Stars Buyurtma**\n\n"
+            f"👤 **Username:** {data['username']}\n"
+            f"⭐️ **Stars:** {data['stars']}\n"
+            f"💰 **Jami:** {data['total']:,} so'm"
+        )
 
-    await context.bot.send_message(chat_id=GROUP_ID, text=text)
-
+    await context.bot.send_message(chat_id=GROUP_ID, text=text, parse_mode="Markdown")
 
 async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -110,7 +116,6 @@ async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "⚙️ Admin Panel\n\nKerakli bo'limni tanlang:",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
-
 
 async def add_balance_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -140,9 +145,7 @@ async def receive_add_amount(update: Update, context: ContextTypes.DEFAULT_TYPE)
     except ValueError:
         await update.message.reply_text("❌ Faqat son kiriting.")
         return WAIT_ADD_AMOUNT
-        
     user_id = context.user_data["target_user"]
-    
     add_balance(user_id, amount)
     balance = get_balance(user_id)
     
@@ -184,7 +187,8 @@ async def receive_remove_amount(update: Update, context: ContextTypes.DEFAULT_TY
     except ValueError:
         await update.message.reply_text("❌ Faqat son kiriting.")
         return WAIT_REMOVE_AMOUNT
-        user_id = context.user_data["target_user"]
+
+    user_id = context.user_data["target_user"]
 
     add_balance(user_id, -amount)
     balance = get_balance(user_id)
@@ -199,7 +203,7 @@ async def receive_remove_amount(update: Update, context: ContextTypes.DEFAULT_TY
     return ConversationHandler.END
 
 
-if name == "main":
+if __name__ == "__main__":
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
