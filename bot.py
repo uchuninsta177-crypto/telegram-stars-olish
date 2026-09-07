@@ -108,23 +108,23 @@ async def select_gift_category(update: Update, context: ContextTypes.DEFAULT_TYP
     # Har bir kategoriya ichidagi sovg'alar
     category_items = {
         "cat_15": [
-            InlineKeyboardButton("💝 Yurak (15 Stars)", callback_data="item_heart_15"),
-            InlineKeyboardButton("🧸 Ayiqcha (15 Stars)", callback_data="item_bear_15")
+            InlineKeyboardButton("💝 Yurak (15 Stars) 3500 so'm", callback_data="item_heart_15"),
+            InlineKeyboardButton("🧸 Ayiqcha (15 Stars) 3500 so'm", callback_data="item_bear_15")
         ],
         "cat_25": [
-            InlineKeyboardButton("🌹 Atirgul (25 Stars)", callback_data="item_rose_25"),
-            InlineKeyboardButton("🎁 Sovg'a quti (25 Stars)", callback_data="item_box_25")
+            InlineKeyboardButton("🌹 Atirgul (25 Stars) 5500 so'm", callback_data="item_rose_25"),
+            InlineKeyboardButton("🎁 Sovg'a quti (25 Stars) 5500 so'm", callback_data="item_box_25")
         ],
         "cat_50": [
-            InlineKeyboardButton("💐 Buket (50 Stars)", callback_data="item_bouquet_50"),
-            InlineKeyboardButton("🎂 Tort (50 Stars)", callback_data="item_cake_50"),
-            InlineKeyboardButton("🍾 Shampan (50 Stars)", callback_data="item_champagne_50"),
-            InlineKeyboardButton("🚀 Raketa (50 Stars)", callback_data="item_rocket_50")
+            InlineKeyboardButton("💐 Buket (50 Stars) 11000 so'm", callback_data="item_bouquet_50"),
+            InlineKeyboardButton("🎂 Tort (50 Stars) 11000 so'm", callback_data="item_cake_50"),
+            InlineKeyboardButton("🍾 Shampan (50 Stars) 11000 so'm", callback_data="item_champagne_50"),
+            InlineKeyboardButton("🚀 Raketa (50 Stars) 11000 so'm", callback_data="item_rocket_50")
         ],
         "cat_100": [
-            InlineKeyboardButton("💍 Uzuk (100 Stars)", callback_data="item_ring_100"),
-            InlineKeyboardButton("🏆 Kubok (100 Stars)", callback_data="item_trophy_100"),
-            InlineKeyboardButton("💎 Olmos (100 Stars)", callback_data="item_diamond_100")
+            InlineKeyboardButton("💍 Uzuk (100 Stars) 22000 so'm", callback_data="item_ring_100"),
+            InlineKeyboardButton("🏆 Kubok (100 Stars) 22000 so'm", callback_data="item_trophy_100"),
+            InlineKeyboardButton("💎 Olmos (100 Stars) 22000 so'm", callback_data="item_diamond_100")
         ]
     }
 
@@ -141,17 +141,17 @@ async def select_gift_category(update: Update, context: ContextTypes.DEFAULT_TYP
 
 # Sovg'alar ro'yxati (Barcha ma'lumotlar shuyerda saqlanadi)
 GIFTS_DB = {
-    "item_heart_15": ("💝 Yurak", 15),
-    "item_bear_15": ("🧸 Ayiqcha", 15),
-    "item_rose_25": ("🌹 Atirgul", 25),
-    "item_box_25": ("🎁 Sovg'a quti", 25),
-    "item_bouquet_50": ("💐 Buket", 50),
-    "item_cake_50": ("🎂 Tort", 50),
-    "item_champagne_50": ("🍾 Shampan", 50),
-    "item_rocket_50": ("🚀 Raketa", 50),
-    "item_ring_100": ("💍 Uzuk", 100),
-    "item_trophy_100": ("🏆 Kubok", 100),
-    "item_diamond_100": ("💎 Olmos", 100)
+    "item_heart_15": ("💝 Yurak 3500 so'm", 15),
+    "item_bear_15": ("🧸 Ayiqcha 3500 so'm", 15),
+    "item_rose_25": ("🌹 Atirgul 5500 so'm", 25),
+    "item_box_25": ("🎁 Sovg'a quti 5500 so'm", 25),
+    "item_bouquet_50": ("💐 Buket 11000 so'm", 50),
+    "item_cake_50": ("🎂 Tort 11000 so'm", 50),
+    "item_champagne_50": ("🍾 Shampan 11000 so'm", 50),
+    "item_rocket_50": ("🚀 Raketa 11000 so'm", 50),
+    "item_ring_100": ("💍 Uzuk  22000 so'm", 100),
+    "item_trophy_100": ("🏆 Kubok  22000 so'm", 100),
+    "item_diamond_100": ("💎 Olmos  22000 so'm", 100)
 }
 
 
