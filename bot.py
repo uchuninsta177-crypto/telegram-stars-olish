@@ -78,49 +78,99 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-# Giftlar ro'yxatini ko'rsatish
+# 1-BOSQICH: Gift kategoriyalarini ko'rsatish
 async def show_gifts(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
     keyboard = [
-        [InlineKeyboardButton("💝 🧸 (15 Stars)", callback_data="gift_cake")],
-        [InlineKeyboardButton("🌹 🎁 (25 Stars)", callback_data="gift_star")],
-        [InlineKeyboardButton("💐 🎂 🍾 🚀(50 Stars)", callback_data="gift_bear")],
-        [InlineKeyboardButton("💍 🏆 💎 (100 Stars)", callback_data="gift_ring")],
+        [InlineKeyboardButton("💝 🧸 (15 Stars)", callback_data="cat_15")],
+        [InlineKeyboardButton("🌹 🎁 (25 Stars)", callback_data="cat_25")],
+        [InlineKeyboardButton("💐 🎂 🍾 🚀 (50 Stars)", callback_data="cat_50")],
+        [InlineKeyboardButton("💍 🏆 💎 (100 Stars)", callback_data="cat_100")],
         [InlineKeyboardButton("⬅️ Orqaga", callback_data="back_to_main")]
     ]
 
     await query.edit_message_text(
-        "🎁 **Biror giftni tanlang:**",
+        "🎁 **Biror gift turini tanlang:**",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="Markdown"
     )
 
 
-# Gift tanlanganda tasdiqlash menyusi
-async def select_gift_option(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# 2-BOSQICH: Kategoriya bosilganda ichidagi sovg'alarni chiqarish
+async def select_gift_category(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    gifts = {
-        "gift_cake": ("Delicious Cake 🎂", 15),
-        "gift_star": ("Green Star ⭐️", 25),
-        "gift_bear": ("Teddy Bear 🧸", 50),
-        "gift_ring": ("Golden Ring 💍", 100),
+    category = query.data
+
+    # Har bir kategoriya ichidagi sovg'alar
+    category_items = {
+        "cat_15": [
+            InlineKeyboardButton("💝 Yurak (15 Stars)", callback_data="item_heart_15"),
+            InlineKeyboardButton("🧸 Ayiqcha (15 Stars)", callback_data="item_bear_15")
+        ],
+        "cat_25": [
+            InlineKeyboardButton("🌹 Atirgul (25 Stars)", callback_data="item_rose_25"),
+            InlineKeyboardButton("🎁 Sovg'a quti (25 Stars)", callback_data="item_box_25")
+        ],
+        "cat_50": [
+            InlineKeyboardButton("💐 Buket (50 Stars)", callback_data="item_bouquet_50"),
+            InlineKeyboardButton("🎂 Tort (50 Stars)", callback_data="item_cake_50"),
+            InlineKeyboardButton("🍾 Shampan (50 Stars)", callback_data="item_champagne_50"),
+            InlineKeyboardButton("🚀 Raketa (50 Stars)", callback_data="item_rocket_50")
+        ],
+        "cat_100": [
+            InlineKeyboardButton("💍 Uzuk (100 Stars)", callback_data="item_ring_100"),
+            InlineKeyboardButton("🏆 Kubok (100 Stars)", callback_data="item_trophy_100"),
+            InlineKeyboardButton("💎 Olmos (100 Stars)", callback_data="item_diamond_100")
+        ]
     }
 
-    gift_key = query.data
-    if gift_key in gifts:
-        gift_name, price = gifts[gift_key]
+    if category in category_items:
+        buttons = [[btn] for btn in category_items[category]]
+        buttons.append([InlineKeyboardButton("⬅️ Orqaga", callback_data="show_gifts")])
+
+        await query.edit_message_text(
+            "👇 **Biror birini tanlang:**",
+            reply_markup=InlineKeyboardMarkup(buttons),
+            parse_mode="Markdown"
+        )
+
+
+# Sovg'alar ro'yxati (Barcha ma'lumotlar shuyerda saqlanadi)
+GIFTS_DB = {
+    "item_heart_15": ("💝 Yurak", 15),
+    "item_bear_15": ("🧸 Ayiqcha", 15),
+    "item_rose_25": ("🌹 Atirgul", 25),
+    "item_box_25": ("🎁 Sovg'a quti", 25),
+    "item_bouquet_50": ("💐 Buket", 50),
+    "item_cake_50": ("🎂 Tort", 50),
+    "item_champagne_50": ("🍾 Shampan", 50),
+    "item_rocket_50": ("🚀 Raketa", 50),
+    "item_ring_100": ("💍 Uzuk", 100),
+    "item_trophy_100": ("🏆 Kubok", 100),
+    "item_diamond_100": ("💎 Olmos", 100)
+}
+
+
+# 3-BOSQICH: Sovg'a tanlanganda tafsilotlarini va sotib olish tugmasini ko'rsatish
+async def show_gift_details(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    item_key = query.data
+    if item_key in GIFTS_DB:
+        gift_name, price = GIFTS_DB[item_key]
 
         keyboard = [
-            [InlineKeyboardButton("✅ Sotib olishni tasdiqlash", callback_data=f"buy_{gift_key}")],
+            [InlineKeyboardButton("✅ Sotib olish", callback_data=f"buy_{item_key}")],
             [InlineKeyboardButton("⬅️ Orqaga", callback_data="show_gifts")]
         ]
 
         await query.edit_message_text(
-            f"🎁 **Siz tanladingiz:** {gift_name}\n"
+            f"🎁 **Siz tanlagan gift:** {gift_name}\n"
             f"⭐️ **Narxi:** {price} Stars\n\n"
             f"Sotib olishni tasdiqlaysizmi?",
             reply_markup=InlineKeyboardMarkup(keyboard),
@@ -128,21 +178,14 @@ async def select_gift_option(update: Update, context: ContextTypes.DEFAULT_TYPE)
         )
 
 
-# Sotib olish bosilganda guruhga va userga xabar yuborish
+# 4-BOSQICH: Sotib olish tugmasi bosilganda
 async def confirm_buy_gift(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    gifts = {
-        "buy_gift_cake": ("Delicious Cake 🎂", 15),
-        "buy_gift_star": ("Green Star ⭐️", 25),
-        "buy_gift_bear": ("Teddy Bear 🧸", 50),
-        "buy_gift_ring": ("Golden Ring 💍", 100),
-    }
-
-    buy_key = query.data
-    if buy_key in gifts:
-        gift_name, price = gifts[buy_key]
+    buy_key = query.data.replace("buy_", "")
+    if buy_key in GIFTS_DB:
+        gift_name, price = GIFTS_DB[buy_key]
         user = query.from_user
 
         text = (
@@ -159,7 +202,7 @@ async def confirm_buy_gift(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await query.edit_message_text(
             f"✅ **Buyurtmangiz qabul qilindi!**\n\n"
-            f"🎁 **Tanlandi:** {gift_name}\n"
+            f"🎁 **Siz tanlagan gift:** {gift_name}\n"
             f"⭐️ **Narxi:** {price} Stars\n\n"
             f"Administrator tez orada siz bilan bog'lanadi.",
             reply_markup=InlineKeyboardMarkup(keyboard),
@@ -325,8 +368,9 @@ if __name__ == "__main__":
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(show_gifts, pattern="^show_gifts$"))
-    app.add_handler(CallbackQueryHandler(select_gift_option, pattern="^gift_"))
-    app.add_handler(CallbackQueryHandler(confirm_buy_gift, pattern="^buy_gift_"))
+    app.add_handler(CallbackQueryHandler(select_gift_category, pattern="^cat_"))
+    app.add_handler(CallbackQueryHandler(show_gift_details, pattern="^item_"))
+    app.add_handler(CallbackQueryHandler(confirm_buy_gift, pattern="^buy_item_"))
     app.add_handler(CallbackQueryHandler(back_to_main, pattern="^back_to_main$"))
     app.add_handler(CallbackQueryHandler(admin_panel, pattern="^admin_panel$"))
 
