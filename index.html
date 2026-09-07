@@ -3,106 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Telegram Gift Olish</title>
+    <title>Telegram Stars Olish</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background-color: var(--tg-theme-bg-color, #f4f4f9);
-            color: var(--tg-theme-text-color, #222);
-            margin: 0;
+            background-color: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
             padding: 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
         }
-        h2 {
-            margin-bottom: 5px;
-            color: var(--tg-theme-link-color, #2481cc);
-        }
-        p {
-            font-size: 14px;
-            color: #777;
-            margin-bottom: 20px;
-        }
-        .options-container {
+        .container {
             width: 100%;
-            max-width: 400px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
+            max-width: 350px;
+            text-align: center;
         }
-        .card {
-            background: var(--tg-theme-secondary-bg-color, #ffffff);
-            border: 2px solid transparent;
-            border-radius: 12px;
-            padding: 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            transition: all 0.2s ease;
+        input {
+            width: 100%;
+            padding: 12px;
+            margin: 15px 0;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+            text-align: center;
         }
-        .card.active {
-            border-color: var(--tg-theme-button-color, #2481cc);
-            background-color: rgba(36, 129, 204, 0.05);
-        }
-        .card-info {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .icon {
-            font-size: 24px;
-        }
-        .title {
+        .price-box {
+            background: var(--tg-theme-secondary-bg-color, #f4f4f5);
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 18px;
             font-weight: bold;
-            font-size: 15px;
-        }
-        .price {
-            font-weight: bold;
-            font-size: 15px;
-            color: var(--tg-theme-button-color, #2481cc);
+            margin-bottom: 20px;
         }
     </style>
 </head>
 <body>
+    <div class="container">
+        <h2>⭐️ Telegram Stars Olish</h2>
+        <p>Qancha Stars kerakligini kiriting:</p>
 
-    <h2>🎁 Telegram Gifts</h2>
-    <p>O'zingizga ma'qul sovg'ani tanlang:</p>
+        <input type="number" id="starsInput" placeholder="Masalan: 100" value="50" min="1" oninput="calculatePrice()">
 
-    <div class="options-container">
-        <div class="card active" onclick="selectGift('Delicious Cake', 15, '🎂', this)">
-            <div class="card-info">
-                <span class="icon">🎂</span>
-                <span class="title">Delicious Cake</span>
-            </div>
-            <span class="price">15 Stars</span>
-        </div>
-
-        <div class="card" onclick="selectGift('Green Star', 25, '⭐️', this)">
-            <div class="card-info">
-                <span class="icon">⭐️</span>
-                <span class="title">Green Star</span>
-            </div>
-            <span class="price">25 Stars</span>
-        </div>
-
-        <div class="card" onclick="selectGift('Teddy Bear', 50, '🧸', this)">
-            <div class="card-info">
-                <span class="icon">🧸</span>
-                <span class="title">Teddy Bear</span>
-            </div>
-            <span class="price">50 Stars</span>
-        </div>
-
-        <div class="card" onclick="selectGift('Golden Ring', 100, '💍', this)">
-            <div class="card-info">
-                <span class="icon">💍</span>
-                <span class="title">Golden Ring</span>
-            </div>
-            <span class="price">100 Stars</span>
+        <div class="price-box">
+            Jami summa: <span id="totalPrice">0</span> so'm
         </div>
     </div>
 
@@ -110,29 +56,34 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        let selectedGift = {
-            name: 'Delicious Cake',
-            stars: 15
-        };
+        const STAR_PRICE = 270; // 1 Stars narxi (so'mda)
 
-        tg.MainButton.setText(`SOVG'A OLISH (15 STARS)`);
-        tg.MainButton.show();
+        function calculatePrice() {
+            const stars = parseInt(document.getElementById('starsInput').value) || 0;
+            const total = stars * STAR_PRICE;
+            document.getElementById('totalPrice').innerText = total.toLocaleString();
 
-        function selectGift(name, stars, icon, element) {
-            document.querySelectorAll('.card').forEach(el => el.classList.remove('active'));
-            element.classList.add('active');
-
-            selectedGift = { name, stars };
-            tg.MainButton.setText(`SOVG'A OLISH (${stars} STARS)`);
+            if (stars > 0) {
+                tg.MainButton.setText(`SOTIB OLISH (${total.toLocaleString()} SO'M)`);
+                tg.MainButton.show();
+            } else {
+                tg.MainButton.hide();
+            }
         }
 
+        calculatePrice();
+
         tg.MainButton.onClick(function() {
+            const stars = parseInt(document.getElementById('starsInput').value) || 0;
+            const total = stars * STAR_PRICE;
+
             const data = {
-                type: 'gift',
-                gift_name: selectedGift.name,
-                stars: selectedGift.stars,
+                type: 'stars',
+                stars: stars,
+                total: total,
                 username: tg.initDataUnsafe?.user?.username || "Noma'lum"
             };
+
             tg.sendData(JSON.stringify(data));
         });
     </script>
