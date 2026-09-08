@@ -24,7 +24,7 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 GROUP_ID = -1004457471821
 ADMIN_ID = 8061937333
 
-# KARTA REKVIZITLARI (Shu yerga o'zingizning karta ma'lumotlaringizni yozing)
+# KARTA REKVIZITLARI
 BANK_NAME = "Kapitalbank"
 CARD_NUMBER = "8600 0000 0000 0000"
 CARD_HOLDER = "F.I.SH"
@@ -37,8 +37,8 @@ CARD_HOLDER = "F.I.SH"
     WAIT_REMOVE_AMOUNT,
     WAIT_TARGET_USERNAME,
     WAIT_TOPUP_AMOUNT,
-    WAIT_RECEIPT_CLICK,  # 'Chek yuborish' tugmasini kutish
-    WAIT_RECEIPT_PHOTO,  # Chek rasmini kutish
+    WAIT_RECEIPT_CLICK,
+    WAIT_RECEIPT_PHOTO,
 ) = range(8)
 
 # Sovg'alar bazasi
@@ -62,11 +62,55 @@ CANCEL_KEYBOARD = InlineKeyboardMarkup(
 )
 
 
+# Bosh menyu chiqaruvchi yordamchi funksiya
+async def send_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, text_prefix: str = ""):
+    user = update.effective_user
+    user_balance = get_balance(user.id)
+
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                "⭐️ Stars olish",
+                web_app=WebAppInfo(
+                    url="https://uchuninsta177-crypto.github.io/telegram-stars-olish/"
+                ),
+            )
+        ],
+        [InlineKeyboardButton("🎁 Gift olish", callback_data="show_gifts")],
+        [InlineKeyboardButton("💳 Balans to'ldirish", callback_data="topup_balance")],
+    ]
+
+    if user.id == ADMIN_ID:
+        keyboard.append([InlineKeyboardButton("⚙️ Admin Panel", callback_data="admin_panel")])
+
+    msg_text = f"{text_prefix}Salom, {user.first_name}! 👋\n\n💳 **Balansingiz:** {user_balance:,} so'm\n\nKerakli xizmatni tanlang:"
+
+    if update.callback_query:
+        await update.callback_query.message.reply_text(
+            msg_text,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="Markdown"
+        )
+    else:
+        await update.message.reply_text(
+            msg_text,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="Markdown"
+        )
+
+
+# Bekor qilish tugmasi bosilganda bosh sahifaga qaytarish
 async def cancel_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     context.user_data.clear()
-    await query.edit_message_text("❌ Amaliyot bekor qilindi.")
+    
+    try:
+        await query.message.delete()
+    except Exception:
+        pass
+
+    await send_main_menu(update, context, text_prefix="❌ Amaliyot bekor qilindi.\n\n")
     return ConversationHandler.END
 
 
@@ -96,31 +140,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn.commit()
     conn.close()
 
-    user_balance = get_balance(user.id)
-
-    keyboard = [
-        [
-            InlineKeyboardButton(
-                "⭐️ Stars olish",
-                web_app=WebAppInfo(
-                    url="https://uchuninsta177-crypto.github.io/telegram-stars-olish/"
-                ),
-            )
-        ],
-        [InlineKeyboardButton("🎁 Gift olish", callback_data="show_gifts")],
-        [InlineKeyboardButton("💳 Balans to'ldirish", callback_data="topup_balance")],
-    ]
-
-    if user.id == ADMIN_ID:
-        keyboard.append([InlineKeyboardButton("⚙️ Admin Panel", callback_data="admin_panel")])
-
-    await update.message.reply_text(
-        f"Salom, {user.first_name}! 👋\n\n"
-        f"💳 **Balansingiz:** {user_balance:,} so'm\n\n"
-        f"Kerakli xizmatni tanlang:",
-        reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode="Markdown"
-    )
+    await send_main_menu(update, context)
 
 
 # 1-BOSQICH: Balans to'ldirish summasini so'rash
@@ -160,7 +180,7 @@ async def process_topup_amount(update: Update, context: ContextTypes.DEFAULT_TYP
         )
         return WAIT_TOPUP_AMOUNT
 
-    # Summani vaqtincha saqlaymiz
+    # Summani saqlaymiz
     context.user_data["topup_amount"] = amount
 
     keyboard = InlineKeyboardMarkup([
@@ -194,7 +214,7 @@ async def ask_for_receipt_photo(update: Update, context: ContextTypes.DEFAULT_TY
     return WAIT_RECEIPT_PHOTO
 
 
-# 4-BOSQICH: Foydalanuvchi Rasm o'rniga Matn yuborsa (Xatolik xabari)
+# 4-BOSQICH: Matn yuborilganda beriladigan xatolik
 async def invalid_receipt_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "❌ **Xatolik:** Iltimos, faqat rasm (chek) yuboring!",
@@ -205,6 +225,7 @@ async def invalid_receipt_text(update: Update, context: ContextTypes.DEFAULT_TYP
 
 # 5-BOSQICH: Chek rasmi qabul qilindi -> Adminga yuboriladi
 async def process_receipt_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Eng yuqori sifatli rasmni olish
     photo_file_id = update.message.photo[-1].file_id
     user = update.effective_user
     amount = context.user_data.get("topup_amount", 0)
@@ -225,19 +246,19 @@ async def process_receipt_photo(update: Update, context: ContextTypes.DEFAULT_TY
         parse_mode="Markdown"
     )
 
-    keyboard = [[InlineKeyboardButton("⬅️ Bosh menyuga qaytish", callback_data="back_to_main")]]
     await update.message.reply_text(
         "✅ **To'lov cheki qabul qilindi!**\n\n"
         "Administrator chekni tekshirib chiqib, tez orada balansingizni to'ldirib beradi.",
-        reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="Markdown"
     )
 
+    # Bosh sahifaga qaytarish
+    await send_main_menu(update, context)
     context.user_data.clear()
     return ConversationHandler.END
 
 
-# Gift va Menyular uchun mavjud kodlar
+# Gift va Menyular uchun handlerlar
 async def show_gifts(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -378,7 +399,6 @@ async def process_gift_purchase(update: Update, context: ContextTypes.DEFAULT_TY
     )
     await context.bot.send_message(chat_id=GROUP_ID, text=text, parse_mode="Markdown")
 
-    keyboard = [[InlineKeyboardButton("⬅️ Bosh menyuga qaytish", callback_data="back_to_main")]]
     await update.message.reply_text(
         f"✅ **Buyurtmangiz qabul qilindi!**\n\n"
         f"📩 **Kiritilgan Username:** {target_username}\n"
@@ -386,43 +406,21 @@ async def process_gift_purchase(update: Update, context: ContextTypes.DEFAULT_TY
         f"💰 **Yechilgan summa:** {price_som:,} so'm\n"
         f"💳 **Qolgan balansingiz:** {new_balance:,} so'm\n\n"
         f"Administrator tez orada sovg'angizni yetkazib beradi.",
-        reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="Markdown"
     )
 
+    await send_main_menu(update, context)
     return ConversationHandler.END
 
 
 async def back_to_main(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    user = query.from_user
-
-    user_balance = get_balance(user.id)
-
-    keyboard = [
-        [
-            InlineKeyboardButton(
-                "⭐️ Stars olish",
-                web_app=WebAppInfo(
-                    url="https://uchuninsta177-crypto.github.io/telegram-stars-olish/"
-                ),
-            )
-        ],
-        [InlineKeyboardButton("🎁 Gift olish", callback_data="show_gifts")],
-        [InlineKeyboardButton("💳 Balans to'ldirish", callback_data="topup_balance")],
-    ]
-
-    if user.id == ADMIN_ID:
-        keyboard.append([InlineKeyboardButton("⚙️ Admin Panel", callback_data="admin_panel")])
-
-    await query.edit_message_text(
-        f"Salom, {user.first_name}! 👋\n\n"
-        f"💳 **Balansingiz:** {user_balance:,} so'm\n\n"
-        f"Kerakli xizmatni tanlang:",
-        reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode="Markdown"
-    )
+    try:
+        await query.message.delete()
+    except Exception:
+        pass
+    await send_main_menu(update, context)
 
 
 async def webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
