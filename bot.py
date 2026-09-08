@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import sqlite3
 
@@ -14,9 +15,19 @@ from telegram.ext import (
     filters,
 )
 
+# Loggingni sozlash
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+)
+
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 GROUP_ID = -1004457471821
 ADMIN_ID = 8061937333
+
+# KARTA REKVIZITLARI (Shu yerga o'zingizning karta ma'lumotlaringizni yozing)
+BANK_NAME = "Kapitalbank"
+CARD_NUMBER = "8600 0000 0000 0000"
+CARD_HOLDER = "F.I.SH"
 
 # State'lar (Bosqichlar)
 (
@@ -25,9 +36,12 @@ ADMIN_ID = 8061937333
     WAIT_REMOVE_USER,
     WAIT_REMOVE_AMOUNT,
     WAIT_TARGET_USERNAME,
-) = range(5)
+    WAIT_TOPUP_AMOUNT,
+    WAIT_RECEIPT_CLICK,  # 'Chek yuborish' tugmasini kutish
+    WAIT_RECEIPT_PHOTO,  # Chek rasmini kutish
+) = range(8)
 
-# Sovg'alar bazasi: (Gift nomi + stars ko'rinishi, Stars soni, So'm narxi)
+# Sovg'alar bazasi
 GIFTS_DB = {
     "item_heart_15": ("💝 Yurak (15 stars)", 15, "3500"),
     "item_bear_15": ("🧸 Ayiqcha (15 stars)", 15, "3500"),
@@ -41,6 +55,19 @@ GIFTS_DB = {
     "item_trophy_100": ("🏆 Kubok (100 stars)", 100, "22000"),
     "item_diamond_100": ("💎 Olmos (100 stars)", 100, "22000")
 }
+
+# Universal bekor qilish tugmasi
+CANCEL_KEYBOARD = InlineKeyboardMarkup(
+    [[InlineKeyboardButton("❌ Bekor qilish", callback_data="cancel_action")]]
+)
+
+
+async def cancel_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    context.user_data.clear()
+    await query.edit_message_text("❌ Amaliyot bekor qilindi.")
+    return ConversationHandler.END
 
 
 # /start handleri
@@ -69,6 +96,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn.commit()
     conn.close()
 
+    user_balance = get_balance(user.id)
+
     keyboard = [
         [
             InlineKeyboardButton(
@@ -79,18 +108,136 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         ],
         [InlineKeyboardButton("🎁 Gift olish", callback_data="show_gifts")],
+        [InlineKeyboardButton("💳 Balans to'ldirish", callback_data="topup_balance")],
     ]
 
     if user.id == ADMIN_ID:
         keyboard.append([InlineKeyboardButton("⚙️ Admin Panel", callback_data="admin_panel")])
 
     await update.message.reply_text(
-        f"Salom, {user.first_name}! 👋\n\nKerakli xizmatni tanlang:",
+        f"Salom, {user.first_name}! 👋\n\n"
+        f"💳 **Balansingiz:** {user_balance:,} so'm\n\n"
+        f"Kerakli xizmatni tanlang:",
         reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="Markdown"
     )
 
 
-# 1-BOSQICH: Gift kategoriyalarini ko'rsatish
+# 1-BOSQICH: Balans to'ldirish summasini so'rash
+async def topup_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    await query.message.reply_text(
+        "💵 **To'lov miqdorini kiriting:**\n\n"
+        "Minimal summa: **3,500 so'm**\n\n"
+        "*(Faqat raqamda kiriting, masalan: 5000)*",
+        parse_mode="Markdown",
+        reply_markup=CANCEL_KEYBOARD
+    )
+    return WAIT_TOPUP_AMOUNT
+
+
+# 2-BOSQICH: Summa tekshiriladi va Rekvizitlar ko'rsatiladi
+async def process_topup_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text.strip().replace(" ", "").replace(",", "")
+
+    if not text.isdigit():
+        await update.message.reply_text(
+            "❌ **Iltimos, faqat raqam kiriting!**\n\nMasalan: 5000",
+            parse_mode="Markdown",
+            reply_markup=CANCEL_KEYBOARD
+        )
+        return WAIT_TOPUP_AMOUNT
+
+    amount = int(text)
+
+    if amount < 3500:
+        await update.message.reply_text(
+            "❌ **Xatolik:** Minimal balans to'ldirish summasi **3,500 so'm**",
+            parse_mode="Markdown",
+            reply_markup=CANCEL_KEYBOARD
+        )
+        return WAIT_TOPUP_AMOUNT
+
+    # Summani vaqtincha saqlaymiz
+    context.user_data["topup_amount"] = amount
+
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🧾 Chek yuborish", callback_data="send_receipt")],
+        [InlineKeyboardButton("❌ Bekor qilish", callback_data="cancel_action")]
+    ])
+
+    await update.message.reply_text(
+        f"💳 **Hisobni to'ldirish**\n\n"
+        f"💰 **Summa:** {amount:,} so'm\n\n"
+        f"🏦 **Bank:** {BANK_NAME}\n"
+        f"💳 **Karta raqami:** `{CARD_NUMBER}`\n"
+        f"👤 **Karta egasi:** {CARD_HOLDER}\n\n"
+        f"⏳ To'lov qilib bo'lgach **'Chek yuborish'** orqali chekni yuborishingiz mumkin.\n\n"
+        f"‼️ *Eslatma: 30 daqiqa ichida chek yubormasangiz pulingiz tushmay qolishi mumkin!*",
+        parse_mode="Markdown",
+        reply_markup=keyboard
+    )
+    return WAIT_RECEIPT_CLICK
+
+
+# 3-BOSQICH: 'Chek yuborish' tugmasi bosilganda
+async def ask_for_receipt_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    await query.message.reply_text(
+        "📸 **To'lov chekining rasmini yuboring:**",
+        reply_markup=CANCEL_KEYBOARD
+    )
+    return WAIT_RECEIPT_PHOTO
+
+
+# 4-BOSQICH: Foydalanuvchi Rasm o'rniga Matn yuborsa (Xatolik xabari)
+async def invalid_receipt_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "❌ **Xatolik:** Iltimos, faqat rasm (chek) yuboring!",
+        reply_markup=CANCEL_KEYBOARD
+    )
+    return WAIT_RECEIPT_PHOTO
+
+
+# 5-BOSQICH: Chek rasmi qabul qilindi -> Adminga yuboriladi
+async def process_receipt_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    photo_file_id = update.message.photo[-1].file_id
+    user = update.effective_user
+    amount = context.user_data.get("topup_amount", 0)
+
+    admin_caption = (
+        "💳 **Yangi Balans To'ldirish So'rovi!**\n\n"
+        f"👤 **Foydalanuvchi:** {user.full_name}\n"
+        f"🆔 **User ID:** `{user.id}`\n"
+        f"🏷 **Username:** @{user.username or 'yo_q'}\n"
+        f"💰 **Kutilayotgan summa:** {amount:,} so'm"
+    )
+
+    # Adminga rasm (chek) va matnni birga yuborish
+    await context.bot.send_photo(
+        chat_id=GROUP_ID,
+        photo=photo_file_id,
+        caption=admin_caption,
+        parse_mode="Markdown"
+    )
+
+    keyboard = [[InlineKeyboardButton("⬅️ Bosh menyuga qaytish", callback_data="back_to_main")]]
+    await update.message.reply_text(
+        "✅ **To'lov cheki qabul qilindi!**\n\n"
+        "Administrator chekni tekshirib chiqib, tez orada balansingizni to'ldirib beradi.",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="Markdown"
+    )
+
+    context.user_data.clear()
+    return ConversationHandler.END
+
+
+# Gift va Menyular uchun mavjud kodlar
 async def show_gifts(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -110,7 +257,6 @@ async def show_gifts(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-# 2-BOSQICH: Kategoriya bosilganda
 async def select_gift_category(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -144,13 +290,12 @@ async def select_gift_category(update: Update, context: ContextTypes.DEFAULT_TYP
         buttons.append([InlineKeyboardButton("⬅️ Orqaga", callback_data="show_gifts")])
 
         await query.edit_message_text(
-            "👇 **Biror birini tanlang:**",
+            "👇 **Biror giftni tanlang:**",
             reply_markup=InlineKeyboardMarkup(buttons),
             parse_mode="Markdown"
         )
 
 
-# 3-BOSQICH: Gift tafsilotlarini ko'rsatish
 async def show_gift_details(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -174,7 +319,6 @@ async def show_gift_details(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
-# 4-BOSQICH: Sotib olish bosilganda username so'rash
 async def ask_username_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -183,13 +327,15 @@ async def ask_username_start(update: Update, context: ContextTypes.DEFAULT_TYPE)
     context.user_data["selected_gift_key"] = buy_key
 
     await query.message.reply_text(
-        "✏️ **Gift yuborilishi kerak bo'lgan Telegram Username (nikingiz)ni kiriting:**\n\n"
-        "*(Masalan: @username)*"
+        "✏️ Gift yuborilishi kerak bo'lgan Telegram Username (nikingiz)ni kiriting:\n\n"
+        "*(Masalan: @username)*\n\n"
+        "‼️ **Eslatma:** Username'ni to'g'ri kiritganingizga ishonch hosil qiling, aks holda pulingiz qaytarib berilmaydi!",
+        parse_mode="Markdown",
+        reply_markup=CANCEL_KEYBOARD
     )
     return WAIT_TARGET_USERNAME
 
 
-# 5-BOSQICH: Username qabul qilingach balansni tekshirib xaridni yakunlash
 async def process_gift_purchase(update: Update, context: ContextTypes.DEFAULT_TYPE):
     target_username = update.message.text.strip()
     user = update.effective_user
@@ -204,9 +350,11 @@ async def process_gift_purchase(update: Update, context: ContextTypes.DEFAULT_TY
 
     user_balance = get_balance(user.id)
 
-    # Balans yetarli bo'lmasa
     if user_balance < price_som:
-        keyboard = [[InlineKeyboardButton("🎁 Giftlar bo'limi", callback_data="show_gifts")]]
+        keyboard = [
+            [InlineKeyboardButton("💳 Balans to'ldirish", callback_data="topup_balance")],
+            [InlineKeyboardButton("🎁 Giftlar bo'limi", callback_data="show_gifts")]
+        ]
         await update.message.reply_text(
             f"❌ **Mablag' yetarli emas!**\n\n"
             f"🎁 Gift narxi: {price_som:,} so'm\n"
@@ -217,11 +365,9 @@ async def process_gift_purchase(update: Update, context: ContextTypes.DEFAULT_TY
         )
         return ConversationHandler.END
 
-    # Balans yetarli bo'lsa — ayiramiz
     add_balance(user.id, -price_som)
     new_balance = get_balance(user.id)
 
-    # Admin guruhiga xabar yuborish
     text = (
         "🎁 **Yangi Gift Xarid Qilindi!**\n\n"
         f"👤 **Xaridor ID:** `{user.id}` (@{user.username or 'No_Username'})\n"
@@ -247,11 +393,12 @@ async def process_gift_purchase(update: Update, context: ContextTypes.DEFAULT_TY
     return ConversationHandler.END
 
 
-# Bosh menyuga qaytish
 async def back_to_main(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     user = query.from_user
+
+    user_balance = get_balance(user.id)
 
     keyboard = [
         [
@@ -263,18 +410,21 @@ async def back_to_main(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         ],
         [InlineKeyboardButton("🎁 Gift olish", callback_data="show_gifts")],
+        [InlineKeyboardButton("💳 Balans to'ldirish", callback_data="topup_balance")],
     ]
 
     if user.id == ADMIN_ID:
         keyboard.append([InlineKeyboardButton("⚙️ Admin Panel", callback_data="admin_panel")])
 
     await query.edit_message_text(
-        f"Salom, {user.first_name}! 👋\n\nKerakli xizmatni tanlang:",
+        f"Salom, {user.first_name}! 👋\n\n"
+        f"💳 **Balansingiz:** {user_balance:,} so'm\n\n"
+        f"Kerakli xizmatni tanlang:",
         reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="Markdown"
     )
 
 
-# Stars WebApp ma'lumotlarini qabul qilish
 async def webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = json.loads(update.effective_message.web_app_data.data)
 
@@ -288,7 +438,6 @@ async def webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(chat_id=GROUP_ID, text=text, parse_mode="Markdown")
 
 
-# Admin panel
 async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -299,6 +448,7 @@ async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("➕ Balans qo'shish", callback_data="add_balance")],
         [InlineKeyboardButton("➖ Balans ayirish", callback_data="remove_balance")],
+        [InlineKeyboardButton("⬅️ Bosh menyu", callback_data="back_to_main")],
     ]
 
     await query.edit_message_text(
@@ -307,7 +457,6 @@ async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-# Balans qo'shish
 async def add_balance_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -315,7 +464,7 @@ async def add_balance_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if query.from_user.id != ADMIN_ID:
         return ConversationHandler.END
 
-    await query.message.reply_text("👤 User ID yuboring:")
+    await query.message.reply_text("👤 User ID yuboring:", reply_markup=CANCEL_KEYBOARD)
     return WAIT_ADD_USER
 
 
@@ -323,10 +472,10 @@ async def receive_add_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         context.user_data["target_user"] = int(update.message.text)
     except ValueError:
-        await update.message.reply_text("❌ Faqat User ID (son) yuboring.")
+        await update.message.reply_text("❌ Faqat User ID (son) yuboring.", reply_markup=CANCEL_KEYBOARD)
         return WAIT_ADD_USER
 
-    await update.message.reply_text("💰 Qo'shiladigan summani yuboring:")
+    await update.message.reply_text("💰 Qo'shiladigan summani yuboring:", reply_markup=CANCEL_KEYBOARD)
     return WAIT_ADD_AMOUNT
 
 
@@ -334,12 +483,21 @@ async def receive_add_amount(update: Update, context: ContextTypes.DEFAULT_TYPE)
     try:
         amount = int(update.message.text)
     except ValueError:
-        await update.message.reply_text("❌ Faqat son kiriting.")
+        await update.message.reply_text("❌ Faqat son kiriting.", reply_markup=CANCEL_KEYBOARD)
         return WAIT_ADD_AMOUNT
 
     user_id = context.user_data["target_user"]
     add_balance(user_id, amount)
     balance = get_balance(user_id)
+
+    try:
+        await context.bot.send_message(
+            chat_id=user_id,
+            text=f"🎉 **Balansingiz to'ldirildi!**\n\n➕ **Qo'shildi:** {amount:,} so'm\n💳 **Jami balans:** {balance:,} so'm",
+            parse_mode="Markdown"
+        )
+    except Exception:
+        pass
 
     await update.message.reply_text(
         f"✅ Balans qo'shildi!\n\n"
@@ -351,7 +509,6 @@ async def receive_add_amount(update: Update, context: ContextTypes.DEFAULT_TYPE)
     return ConversationHandler.END
 
 
-# Balans ayirish
 async def remove_balance_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -359,7 +516,7 @@ async def remove_balance_start(update: Update, context: ContextTypes.DEFAULT_TYP
     if query.from_user.id != ADMIN_ID:
         return ConversationHandler.END
 
-    await query.message.reply_text("👤 User ID yuboring:")
+    await query.message.reply_text("👤 User ID yuboring:", reply_markup=CANCEL_KEYBOARD)
     return WAIT_REMOVE_USER
 
 
@@ -367,10 +524,10 @@ async def receive_remove_user(update: Update, context: ContextTypes.DEFAULT_TYPE
     try:
         context.user_data["target_user"] = int(update.message.text)
     except ValueError:
-        await update.message.reply_text("❌ Faqat User ID (son) yuboring.")
+        await update.message.reply_text("❌ Faqat User ID (son) yuboring.", reply_markup=CANCEL_KEYBOARD)
         return WAIT_REMOVE_USER
 
-    await update.message.reply_text("💰 Ayiriladigan summani yuboring:")
+    await update.message.reply_text("💰 Ayiriladigan summani yuboring:", reply_markup=CANCEL_KEYBOARD)
     return WAIT_REMOVE_AMOUNT
 
 
@@ -378,7 +535,7 @@ async def receive_remove_amount(update: Update, context: ContextTypes.DEFAULT_TY
     try:
         amount = int(update.message.text)
     except ValueError:
-        await update.message.reply_text("❌ Faqat son kiriting.")
+        await update.message.reply_text("❌ Faqat son kiriting.", reply_markup=CANCEL_KEYBOARD)
         return WAIT_REMOVE_AMOUNT
 
     user_id = context.user_data["target_user"]
@@ -399,25 +556,47 @@ async def receive_remove_amount(update: Update, context: ContextTypes.DEFAULT_TY
 if __name__ == "__main__":
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-    # Gift xarid qilish suhbati handler'i
+    common_fallbacks = [CallbackQueryHandler(cancel_action, pattern="^cancel_action$")]
+
+    # Balans to'ldirish va Chek tekshirish suhbati
+    topup_handler = ConversationHandler(
+        entry_points=[CallbackQueryHandler(topup_start, pattern="^topup_balance$")],
+        states={
+            WAIT_TOPUP_AMOUNT: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, process_topup_amount)
+            ],
+            WAIT_RECEIPT_CLICK: [
+                CallbackQueryHandler(ask_for_receipt_photo, pattern="^send_receipt$")
+            ],
+            WAIT_RECEIPT_PHOTO: [
+                MessageHandler(filters.PHOTO, process_receipt_photo),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, invalid_receipt_text),
+            ],
+        },
+        fallbacks=common_fallbacks,
+    )
+
+    # Gift xarid qilish suhbati
     buy_gift_handler = ConversationHandler(
-        entry_points=[CallbackQueryHandler(ask_username_start, pattern="^buy_item_")],
+        entry_points=[CallbackQueryHandler(ask_username_start, pattern="^buy_")],
         states={
             WAIT_TARGET_USERNAME: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, process_gift_purchase)
             ],
         },
-        fallbacks=[],
+        fallbacks=common_fallbacks,
     )
 
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(topup_handler)
+    app.add_handler(buy_gift_handler)
     app.add_handler(CallbackQueryHandler(show_gifts, pattern="^show_gifts$"))
     app.add_handler(CallbackQueryHandler(select_gift_category, pattern="^cat_"))
     app.add_handler(CallbackQueryHandler(show_gift_details, pattern="^item_"))
-    app.add_handler(buy_gift_handler)
     app.add_handler(CallbackQueryHandler(back_to_main, pattern="^back_to_main$"))
     app.add_handler(CallbackQueryHandler(admin_panel, pattern="^admin_panel$"))
 
+    # Admin: Add balance
     app.add_handler(
         ConversationHandler(
             entry_points=[CallbackQueryHandler(add_balance_start, pattern="^add_balance$")],
@@ -425,10 +604,11 @@ if __name__ == "__main__":
                 WAIT_ADD_USER: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_add_user)],
                 WAIT_ADD_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_add_amount)],
             },
-            fallbacks=[],
+            fallbacks=common_fallbacks,
         )
     )
 
+    # Admin: Remove balance
     app.add_handler(
         ConversationHandler(
             entry_points=[CallbackQueryHandler(remove_balance_start, pattern="^remove_balance$")],
@@ -440,7 +620,7 @@ if __name__ == "__main__":
                     MessageHandler(filters.TEXT & ~filters.COMMAND, receive_remove_amount)
                 ],
             },
-            fallbacks=[],
+            fallbacks=common_fallbacks,
         )
     )
 
