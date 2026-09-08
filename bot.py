@@ -18,7 +18,14 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 GROUP_ID = -1004457471821
 ADMIN_ID = 8061937333
 
-WAIT_ADD_USER, WAIT_ADD_AMOUNT, WAIT_REMOVE_USER, WAIT_REMOVE_AMOUNT = range(4)
+# State'lar (Bosqichlar)
+(
+    WAIT_ADD_USER,
+    WAIT_ADD_AMOUNT,
+    WAIT_REMOVE_USER,
+    WAIT_REMOVE_AMOUNT,
+    WAIT_TARGET_USERNAME,
+) = range(5)
 
 # Sovg'alar bazasi: (Gift nomi + stars ko'rinishi, Stars soni, So'm narxi)
 GIFTS_DB = {
@@ -71,21 +78,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ),
             )
         ],
-        [
-            InlineKeyboardButton(
-                "🎁 Gift olish", callback_data="show_gifts"
-            )
-        ],
+        [InlineKeyboardButton("🎁 Gift olish", callback_data="show_gifts")],
     ]
 
     if user.id == ADMIN_ID:
-        keyboard.append(
-            [
-                InlineKeyboardButton(
-                    "⚙️ Admin Panel", callback_data="admin_panel"
-                )
-            ]
-        )
+        keyboard.append([InlineKeyboardButton("⚙️ Admin Panel", callback_data="admin_panel")])
 
     await update.message.reply_text(
         f"Salom, {user.first_name}! 👋\n\nKerakli xizmatni tanlang:",
@@ -113,7 +110,7 @@ async def show_gifts(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-# 2-BOSQICH: Kategoriya bosilganda ichidagi sovg'alarni chiqarish
+# 2-BOSQICH: Kategoriya bosilganda
 async def select_gift_category(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -153,7 +150,7 @@ async def select_gift_category(update: Update, context: ContextTypes.DEFAULT_TYP
         )
 
 
-# 3-BOSQICH: Sovg'a tanlanganda tafsilotlarini va sotib olish tugmasini ko'rsatish
+# 3-BOSQICH: Gift tafsilotlarini ko'rsatish
 async def show_gift_details(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -161,7 +158,6 @@ async def show_gift_details(update: Update, context: ContextTypes.DEFAULT_TYPE):
     item_key = query.data
     if item_key in GIFTS_DB:
         gift_name, stars, price_som = GIFTS_DB[item_key]
-
         cat_code = f"cat_{stars}"
 
         keyboard = [
@@ -178,62 +174,77 @@ async def show_gift_details(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
-# 4-BOSQICH: Sotib olish tugmasi bosilganda (Balansni tekshirish va ayirish bilan)
-async def confirm_buy_gift(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# 4-BOSQICH: Sotib olish bosilganda username so'rash
+async def ask_username_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
     buy_key = query.data.replace("buy_", "")
-    if buy_key in GIFTS_DB:
-        gift_name, stars, price_som_str = GIFTS_DB[buy_key]
-        user = query.from_user
+    context.user_data["selected_gift_key"] = buy_key
 
-        # Narxni son shakliga o'tkazamiz (masalan: "3500" -> 3500)
-        price_som = int(price_som_str.replace(",", "").replace(" ", ""))
+    await query.message.reply_text(
+        "✏️ **Gift yuborilishi kerak bo'lgan Telegram Username (nikingiz)ni kiriting:**\n\n"
+        "*(Masalan: @username)*"
+    )
+    return WAIT_TARGET_USERNAME
 
-        # Foydalanuvchi balansini tekshiramiz
-        user_balance = get_balance(user.id)
 
-        # Balans yetarli bo'lmasa
-        if user_balance < price_som:
-            await query.edit_message_text(
-                f"❌ **Mablag' yetarli emas!**\n\n"
-                f"🎁 Gift narxi: {price_som:,} so'm\n"
-                f"💳 Sizning balanslingiz: {user_balance:,} so'm\n\n"
-                f"Iltimos, balansingizni to'ldiring va qaytadan urinib ko'ring.",
-                reply_markup=InlineKeyboardMarkup([[
-                    InlineKeyboardButton("⬅️ Orqaga", callback_data="show_gifts")
-                ]]),
-                parse_mode="Markdown"
-            )
-            return
+# 5-BOSQICH: Username qabul qilingach balansni tekshirib xaridni yakunlash
+async def process_gift_purchase(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    target_username = update.message.text.strip()
+    user = update.effective_user
+    buy_key = context.user_data.get("selected_gift_key")
 
-        # Balans yetarli bo'lsa — balansdan ayiramiz
-        add_balance(user.id, -price_som)
-        new_balance = get_balance(user.id)
+    if not buy_key or buy_key not in GIFTS_DB:
+        await update.message.reply_text("❌ Xatolik yuz berdi. Qaytadan urinib ko'ring.")
+        return ConversationHandler.END
 
-        # Admin guruhiga xabar yuborish
-        text = (
-            "🎁 **Yangi Gift Xarid Qilindi!**\n\n"
-            f"👤 **Foydalanuvchi:** @{user.username or 'No_Username'}\n"
-            f"🆔 **User ID:** `{user.id}`\n"
-            f"🎁 **Gift:** {gift_name}\n"
-            f"💰 **Yechildi:** {price_som:,} so'm\n"
-            f"💳 **Qolgan balansi:** {new_balance:,} so'm"
-        )
-        await context.bot.send_message(chat_id=GROUP_ID, text=text, parse_mode="Markdown")
+    gift_name, stars, price_som_str = GIFTS_DB[buy_key]
+    price_som = int(price_som_str.replace(",", "").replace(" ", ""))
 
-        # Foydalanuvchiga muvaffaqiyatli xabar ko'rsatish
-        keyboard = [[InlineKeyboardButton("⬅️ Bosh menyuga qaytish", callback_data="back_to_main")]]
-        await query.edit_message_text(
-            f"✅ **Xaridingiz muvaffaqiyatli amalga oshirildi!**\n\n"
-            f"🎁 **Siz tanlagan gift:** {gift_name}\n"
-            f"💰 **Yechilgan summa:** {price_som:,} so'm\n"
-            f"💳 **Qolgan balansingiz:** {new_balance:,} so'm\n\n"
-            f"Administrator tez orada sovg'angizni yetkazib beradi.",
+    user_balance = get_balance(user.id)
+
+    # Balans yetarli bo'lmasa
+    if user_balance < price_som:
+        keyboard = [[InlineKeyboardButton("🎁 Giftlar bo'limi", callback_data="show_gifts")]]
+        await update.message.reply_text(
+            f"❌ **Mablag' yetarli emas!**\n\n"
+            f"🎁 Gift narxi: {price_som:,} so'm\n"
+            f"💳 Sizning balansingiz: {user_balance:,} so'm\n\n"
+            f"Iltimos, balansingizni to'ldiring va qaytadan urinib ko'ring.",
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode="Markdown"
         )
+        return ConversationHandler.END
+
+    # Balans yetarli bo'lsa — ayiramiz
+    add_balance(user.id, -price_som)
+    new_balance = get_balance(user.id)
+
+    # Admin guruhiga xabar yuborish
+    text = (
+        "🎁 **Yangi Gift Xarid Qilindi!**\n\n"
+        f"👤 **Xaridor ID:** `{user.id}` (@{user.username or 'No_Username'})\n"
+        f"📩 **Qabul qiluvchi Username:** {target_username}\n"
+        f"🎁 **Gift:** {gift_name}\n"
+        f"💰 **Yechildi:** {price_som:,} so'm\n"
+        f"💳 **Qolgan balansi:** {new_balance:,} so'm"
+    )
+    await context.bot.send_message(chat_id=GROUP_ID, text=text, parse_mode="Markdown")
+
+    keyboard = [[InlineKeyboardButton("⬅️ Bosh menyuga qaytish", callback_data="back_to_main")]]
+    await update.message.reply_text(
+        f"✅ **Buyurtmangiz qabul qilindi!**\n\n"
+        f"📩 **Kiritilgan Username:** {target_username}\n"
+        f"🎁 **Gift:** {gift_name}\n"
+        f"💰 **Yechilgan summa:** {price_som:,} so'm\n"
+        f"💳 **Qolgan balansingiz:** {new_balance:,} so'm\n\n"
+        f"Administrator tez orada sovg'angizni yetkazib beradi.",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="Markdown"
+    )
+
+    return ConversationHandler.END
 
 
 # Bosh menyuga qaytish
@@ -251,11 +262,7 @@ async def back_to_main(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ),
             )
         ],
-        [
-            InlineKeyboardButton(
-                "🎁 Gift olish", callback_data="show_gifts"
-            )
-        ],
+        [InlineKeyboardButton("🎁 Gift olish", callback_data="show_gifts")],
     ]
 
     if user.id == ADMIN_ID:
@@ -392,11 +399,22 @@ async def receive_remove_amount(update: Update, context: ContextTypes.DEFAULT_TY
 if __name__ == "__main__":
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
+    # Gift xarid qilish suhbati handler'i
+    buy_gift_handler = ConversationHandler(
+        entry_points=[CallbackQueryHandler(ask_username_start, pattern="^buy_item_")],
+        states={
+            WAIT_TARGET_USERNAME: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, process_gift_purchase)
+            ],
+        },
+        fallbacks=[],
+    )
+
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(show_gifts, pattern="^show_gifts$"))
     app.add_handler(CallbackQueryHandler(select_gift_category, pattern="^cat_"))
     app.add_handler(CallbackQueryHandler(show_gift_details, pattern="^item_"))
-    app.add_handler(CallbackQueryHandler(confirm_buy_gift, pattern="^buy_item_"))
+    app.add_handler(buy_gift_handler)
     app.add_handler(CallbackQueryHandler(back_to_main, pattern="^back_to_main$"))
     app.add_handler(CallbackQueryHandler(admin_panel, pattern="^admin_panel$"))
 
@@ -415,8 +433,12 @@ if __name__ == "__main__":
         ConversationHandler(
             entry_points=[CallbackQueryHandler(remove_balance_start, pattern="^remove_balance$")],
             states={
-                WAIT_REMOVE_USER: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_remove_user)],
-                WAIT_REMOVE_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_remove_amount)],
+                WAIT_REMOVE_USER: [
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, receive_remove_user)
+                ],
+                WAIT_REMOVE_AMOUNT: [
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, receive_remove_amount)
+                ],
             },
             fallbacks=[],
         )
