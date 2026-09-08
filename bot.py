@@ -178,33 +178,59 @@ async def show_gift_details(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
-# 4-BOSQICH: Sotib olish tugmasi bosilganda
+# 4-BOSQICH: Sotib olish tugmasi bosilganda (Balansni tekshirish va ayirish bilan)
 async def confirm_buy_gift(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
     buy_key = query.data.replace("buy_", "")
     if buy_key in GIFTS_DB:
-        gift_name, stars, price_som = GIFTS_DB[buy_key]
+        gift_name, stars, price_som_str = GIFTS_DB[buy_key]
         user = query.from_user
 
+        # Narxni son shakliga o'tkazamiz (masalan: "3500" -> 3500)
+        price_som = int(price_som_str.replace(",", "").replace(" ", ""))
+
+        # Foydalanuvchi balansini tekshiramiz
+        user_balance = get_balance(user.id)
+
+        # Balans yetarli bo'lmasa
+        if user_balance < price_som:
+            await query.edit_message_text(
+                f"❌ **Mablag' yetarli emas!**\n\n"
+                f"🎁 Gift narxi: {price_som:,} so'm\n"
+                f"💳 Sizning balanslingiz: {user_balance:,} so'm\n\n"
+                f"Iltimos, balansingizni to'ldiring va qaytadan urinib ko'ring.",
+                reply_markup=InlineKeyboardMarkup([[
+                    InlineKeyboardButton("⬅️ Orqaga", callback_data="show_gifts")
+                ]]),
+                parse_mode="Markdown"
+            )
+            return
+
+        # Balans yetarli bo'lsa — balansdan ayiramiz
+        add_balance(user.id, -price_som)
+        new_balance = get_balance(user.id)
+
+        # Admin guruhiga xabar yuborish
         text = (
-            "🎁 **Yangi Gift Buyurtma!**\n\n"
+            "🎁 **Yangi Gift Xarid Qilindi!**\n\n"
             f"👤 **Foydalanuvchi:** @{user.username or 'No_Username'}\n"
             f"🆔 **User ID:** `{user.id}`\n"
             f"🎁 **Gift:** {gift_name}\n"
-            f"⭐️ **Narxi:** {price_som} so'm"
+            f"💰 **Yechildi:** {price_som:,} so'm\n"
+            f"💳 **Qolgan balansi:** {new_balance:,} so'm"
         )
-
         await context.bot.send_message(chat_id=GROUP_ID, text=text, parse_mode="Markdown")
 
+        # Foydalanuvchiga muvaffaqiyatli xabar ko'rsatish
         keyboard = [[InlineKeyboardButton("⬅️ Bosh menyuga qaytish", callback_data="back_to_main")]]
-
         await query.edit_message_text(
-            f"✅ **Buyurtmangiz qabul qilindi!**\n\n"
+            f"✅ **Xaridingiz muvaffaqiyatli amalga oshirildi!**\n\n"
             f"🎁 **Siz tanlagan gift:** {gift_name}\n"
-            f"⭐️ **Narxi:** {price_som} so'm\n\n"
-            f"Administrator tez orada siz bilan bog'lanadi.",
+            f"💰 **Yechilgan summa:** {price_som:,} so'm\n"
+            f"💳 **Qolgan balansingiz:** {new_balance:,} so'm\n\n"
+            f"Administrator tez orada sovg'angizni yetkazib beradi.",
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode="Markdown"
         )
