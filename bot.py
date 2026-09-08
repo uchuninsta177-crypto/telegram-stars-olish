@@ -20,6 +20,21 @@ ADMIN_ID = 8061937333
 
 WAIT_ADD_USER, WAIT_ADD_AMOUNT, WAIT_REMOVE_USER, WAIT_REMOVE_AMOUNT = range(4)
 
+# Sovg'alar bazasi: (Gift nomi + stars ko'rinishi, Stars soni, So'm narxi)
+GIFTS_DB = {
+    "item_heart_15": ("💝 Yurak (15 stars)", 15, "3500"),
+    "item_bear_15": ("🧸 Ayiqcha (15 stars)", 15, "3500"),
+    "item_rose_25": ("🌹 Atirgul (25 stars)", 25, "5500"),
+    "item_box_25": ("🎁 Sovg'a quti (25 stars)", 25, "5500"),
+    "item_bouquet_50": ("💐 Buket (50 stars)", 50, "11000"),
+    "item_cake_50": ("🎂 Tort (50 stars)", 50, "11000"),
+    "item_champagne_50": ("🍾 Shampan (50 stars)", 50, "11000"),
+    "item_rocket_50": ("🚀 Raketa (50 stars)", 50, "11000"),
+    "item_ring_100": ("💍 Uzuk (100 stars)", 100, "22000"),
+    "item_trophy_100": ("🏆 Kubok (100 stars)", 100, "22000"),
+    "item_diamond_100": ("💎 Olmos (100 stars)", 100, "22000")
+}
+
 
 # /start handleri
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -105,26 +120,25 @@ async def select_gift_category(update: Update, context: ContextTypes.DEFAULT_TYP
 
     category = query.data
 
-    # Har bir kategoriya ichidagi sovg'alar
     category_items = {
         "cat_15": [
-            InlineKeyboardButton("💝 Yurak (15 Stars) 3500 so'm", callback_data="item_heart_15"),
-            InlineKeyboardButton("🧸 Ayiqcha (15 Stars) 3500 so'm", callback_data="item_bear_15")
+            InlineKeyboardButton("💝 Yurak", callback_data="item_heart_15"),
+            InlineKeyboardButton("🧸 Ayiqcha", callback_data="item_bear_15")
         ],
         "cat_25": [
-            InlineKeyboardButton("🌹 Atirgul (25 Stars) 5500 so'm", callback_data="item_rose_25"),
-            InlineKeyboardButton("🎁 Sovg'a quti (25 Stars) 5500 so'm", callback_data="item_box_25")
+            InlineKeyboardButton("🌹 Atirgul", callback_data="item_rose_25"),
+            InlineKeyboardButton("🎁 Sovg'a quti", callback_data="item_box_25")
         ],
         "cat_50": [
-            InlineKeyboardButton("💐 Buket (50 Stars) 11000 so'm", callback_data="item_bouquet_50"),
-            InlineKeyboardButton("🎂 Tort (50 Stars) 11000 so'm", callback_data="item_cake_50"),
-            InlineKeyboardButton("🍾 Shampan (50 Stars) 11000 so'm", callback_data="item_champagne_50"),
-            InlineKeyboardButton("🚀 Raketa (50 Stars) 11000 so'm", callback_data="item_rocket_50")
+            InlineKeyboardButton("💐 Buket", callback_data="item_bouquet_50"),
+            InlineKeyboardButton("🎂 Tort", callback_data="item_cake_50"),
+            InlineKeyboardButton("🍾 Shampan", callback_data="item_champagne_50"),
+            InlineKeyboardButton("🚀 Raketa", callback_data="item_rocket_50")
         ],
         "cat_100": [
-            InlineKeyboardButton("💍 Uzuk (100 Stars) 22000 so'm", callback_data="item_ring_100"),
-            InlineKeyboardButton("🏆 Kubok (100 Stars) 22000 so'm", callback_data="item_trophy_100"),
-            InlineKeyboardButton("💎 Olmos (100 Stars) 22000 so'm", callback_data="item_diamond_100")
+            InlineKeyboardButton("💍 Uzuk", callback_data="item_ring_100"),
+            InlineKeyboardButton("🏆 Kubok", callback_data="item_trophy_100"),
+            InlineKeyboardButton("💎 Olmos", callback_data="item_diamond_100")
         ]
     }
 
@@ -139,22 +153,6 @@ async def select_gift_category(update: Update, context: ContextTypes.DEFAULT_TYP
         )
 
 
-# Sovg'alar ro'yxati (Barcha ma'lumotlar shuyerda saqlanadi)
-GIFTS_DB = {
-    "item_heart_15": ("💝 Yurak 3500 so'm", 15),
-    "item_bear_15": ("🧸 Ayiqcha 3500 so'm", 15),
-    "item_rose_25": ("🌹 Atirgul 5500 so'm", 25),
-    "item_box_25": ("🎁 Sovg'a quti 5500 so'm", 25),
-    "item_bouquet_50": ("💐 Buket 11000 so'm", 50),
-    "item_cake_50": ("🎂 Tort 11000 so'm", 50),
-    "item_champagne_50": ("🍾 Shampan 11000 so'm", 50),
-    "item_rocket_50": ("🚀 Raketa 11000 so'm", 50),
-    "item_ring_100": ("💍 Uzuk  22000 so'm", 100),
-    "item_trophy_100": ("🏆 Kubok  22000 so'm", 100),
-    "item_diamond_100": ("💎 Olmos  22000 so'm", 100)
-}
-
-
 # 3-BOSQICH: Sovg'a tanlanganda tafsilotlarini va sotib olish tugmasini ko'rsatish
 async def show_gift_details(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -162,16 +160,18 @@ async def show_gift_details(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     item_key = query.data
     if item_key in GIFTS_DB:
-        gift_name, price = GIFTS_DB[item_key]
+        gift_name, stars, price_som = GIFTS_DB[item_key]
+
+        cat_code = f"cat_{stars}"
 
         keyboard = [
             [InlineKeyboardButton("✅ Sotib olish", callback_data=f"buy_{item_key}")],
-            [InlineKeyboardButton("⬅️ Orqaga", callback_data="show_gifts")]
+            [InlineKeyboardButton("⬅️ Orqaga", callback_data=cat_code)]
         ]
 
         await query.edit_message_text(
             f"🎁 **Siz tanlagan gift:** {gift_name}\n"
-            f"⭐️ **Narxi:** {price} Stars\n\n"
+            f"⭐️ **Narxi:** {price_som} so'm\n\n"
             f"Sotib olishni tasdiqlaysizmi?",
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode="Markdown"
@@ -185,7 +185,7 @@ async def confirm_buy_gift(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     buy_key = query.data.replace("buy_", "")
     if buy_key in GIFTS_DB:
-        gift_name, price = GIFTS_DB[buy_key]
+        gift_name, stars, price_som = GIFTS_DB[buy_key]
         user = query.from_user
 
         text = (
@@ -193,7 +193,7 @@ async def confirm_buy_gift(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"👤 **Foydalanuvchi:** @{user.username or 'No_Username'}\n"
             f"🆔 **User ID:** `{user.id}`\n"
             f"🎁 **Gift:** {gift_name}\n"
-            f"⭐️ **Narxi:** {price} Stars"
+            f"⭐️ **Narxi:** {price_som} so'm"
         )
 
         await context.bot.send_message(chat_id=GROUP_ID, text=text, parse_mode="Markdown")
@@ -203,7 +203,7 @@ async def confirm_buy_gift(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(
             f"✅ **Buyurtmangiz qabul qilindi!**\n\n"
             f"🎁 **Siz tanlagan gift:** {gift_name}\n"
-            f"⭐️ **Narxi:** {price} Stars\n\n"
+            f"⭐️ **Narxi:** {price_som} so'm\n\n"
             f"Administrator tez orada siz bilan bog'lanadi.",
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode="Markdown"
