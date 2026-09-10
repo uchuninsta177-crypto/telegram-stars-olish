@@ -1,80 +1,107 @@
 <!DOCTYPE html>
 <html lang="uz">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arzon Stars</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Telegram Stars Olish</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+        }
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        .card {
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        input {
+            width: 90%;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #444;
+            background: #333;
+            color: white;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+        .btn {
+            background-color: #0088cc;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .btn:hover {
+            background-color: #006699;
+        }
+    </style>
 </head>
-
 <body>
 
-    <div class="header">
-        <h1>Arzon Stars</h1>
-        <div class="balance">
-            <span id="balance">0 so'm</span>
-            <div class="plus">+</div>
-        </div>
+<div class="container">
+    <h2>⭐️ Telegram Stars Xarid Qilish</h2>
+    
+    <div class="card">
+        <label for="username_input">Qabul qiluvchi Username:</label><br><br>
+        <input type="text" id="username_input" placeholder="@username">
     </div>
 
-    <div class="cards">
-        <div class="card" id="openStars">
-            <div class="emoji">⭐️</div>
-            <div>
-                <h2>Stars olish</h2>
-                <p>Telegram Stars xarid qilish bo'limi</p>
-            </div>
-        </div>
+    <div class="card">
+        <h3>50 Stars</h3>
+        <p>Narxi: 11,000 so'm</p>
+        <button class="btn" onclick="buyStars(50, 11000)">Sotib olish</button>
     </div>
 
-    <div class="stars-page" id="starsPage">
-        <h2>username kiriting 👇</h2>
-        <input type="text" id="username" placeholder="@username">
-        <button id="myself">👤 O'zimga</button>
-
-        <h3>Stars miqdori</h3>
-        <span style="float:right;font-size:14px;color:#999;">
-            Min 50 · Max 10000
-        </span>
-
-        <input type="number" id="customStars" min="50" max="10000" placeholder="50 - 10000">
-
-        <div class="star-grid">
-            <button class="star-btn">50</button>
-            <button class="star-btn">100</button>
-            <button class="star-btn">250</button>
-            <button class="star-btn">500</button>
-        </div>
-
-        <p id="errorText"></p>
-        <h3 id="totalPrice">Jami: 0 so'm</h3>
-
-        <button id="buyBtn">⭐️ Sotib olish</button>
+    <div class="card">
+        <h3>100 Stars</h3>
+        <p>Narxi: 22,000 so'm</p>
+        <button class="btn" onclick="buyStars(100, 22000)">Sotib olish</button>
     </div>
 
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="script.js"></script>
+    <div class="card">
+        <h3>250 Stars</h3>
+        <p>Narxi: 55,000 so'm</p>
+        <button class="btn" onclick="buyStars(250, 55000)">Sotib olish</button>
+    </div>
+</div>
 
-    <!-- URL parametridan balansni o'qib olish kodi -->
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            const tg = window.Telegram ? window.Telegram.WebApp : null;
-            if (tg) {
-                tg.expand();
-            }
+<script>
+    let tg = window.Telegram.WebApp;
+    tg.expand();
 
-            // URL parametridan 'balance' qiymatini ajratib olamiz
-            const urlParams = new URLSearchParams(window.location.search);
-            const userBalance = parseInt(urlParams.get('balance')) || 0;
+    function buyStars(starsCount, totalPriceSom) {
+        let usernameInput = document.getElementById('username_input').value.trim();
 
-            // HTML dagi 'balance' ID ga ega spanga yozamiz
-            const balanceElement = document.getElementById('balance');
-            if (balanceElement) {
-                balanceElement.innerText = userBalance.toLocaleString('uz-UZ') + " so'm";
-            }
-        });
-    </script>
+        if (!usernameInput) {
+            alert("Iltimos, username-ni kiriting!");
+            return;
+        }
+
+        let dataToSend = {
+            stars: parseInt(starsCount),
+            total: parseInt(totalPriceSom),
+            username: usernameInput
+        };
+
+        // Telegram Botga ma'lumot yuboramiz
+        tg.sendData(JSON.stringify(dataToSend));
+    }
+</script>
+
 </body>
-
 </html>
