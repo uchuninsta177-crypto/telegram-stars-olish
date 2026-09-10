@@ -59,7 +59,6 @@ CANCEL_KEYBOARD = InlineKeyboardMarkup(
 
 async def send_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, text_prefix: str = ""):
     user = update.effective_user
-    # Har safar foydalanuvchining username va balansini bazada yangilab qo'yamiz
     add_balance(user.id, 0, user.username)
     user_balance = get_balance(user.id)
 
@@ -324,50 +323,65 @@ async def back_to_main(update: Update, context: ContextTypes.DEFAULT_TYPE):
         pass
     await send_main_menu(update, context)
 
+# --- WEB APP DAN KELGAN STARS BUYURTMASINI QABUL QILISH VA BALANSDAN YECHISH ---
 async def webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    data = json.loads(update.effective_message.web_app_data.data)
-    total_price = int(data.get('total', 0))
-    stars_count = data.get('stars', 0)
-    target_user = data.get('username', user.username or "")
-    if target_user and not target_user.startswith("@"):
-        target_user = f"@{target_user}"
-
-    user_balance = get_balance(user.id)
-
-    if user_balance < total_price:
-        await update.message.reply_text(
-            f"❌ <b>Mablag' yetarli emas!</b>\n\n"
-            f"⭐️ Buyurtma summasi: {total_price:,} so'm\n"
-            f"💳 Balansingiz: {user_balance:,} so'm",
-            parse_mode="HTML"
-        )
-        return
-
-    add_balance(user.id, -total_price, user.username)
-    new_balance = get_balance(user.id)
-
-    buyer_username = f"@{user.username}" if user.username else "yo'q"
-
-    text = (
-        f"🛒 <b>Yangi Stars Buyurtmasi!</b>\n\n"
-        f"👤 <b>Xaridor:</b> <code>{user.id}</code> ({html.escape(buyer_username)})\n"
-        f"🎯 <b>Qabul qiluvchi:</b> {html.escape(target_user)}\n"
-        f"⭐️ <b>Stars:</b> {stars_count}\n"
-        f"💰 <b>Yechilgan summa:</b> {total_price:,} so'm\n"
-        f"💳 <b>Qolgan balans:</b> {new_balance:,} so'm"
-    )
     
     try:
-        await context.bot.send_message(chat_id=GROUP_ID, text=text, parse_mode="HTML")
+        raw_data = update.effective_message.web_app_data.data
+        data = json.loads(raw_data)
+        
+        total_price = int(data.get('total', 0))
+        stars_count = int(data.get('stars', 0))
+        target_user = str(data.get('username', user.username or "")).strip()
+
+        if target_user and not target_user.startswith("@"):
+            target_user = f"@{target_user}"
+
+        user_balance = get_balance(user.id)
+
+        if user_balance < total_price or total_price <= 0:
+            await update.message.reply_text(
+                f"❌ <b>Mablag' yetarli emas!</b>\n\n"
+                f"⭐️ Buyurtma summasi: {total_price:,} so'm\n"
+                f"💳 Balansingiz: {user_balance:,} so'm",
+                parse_mode="HTML"
+            )
+            return
+
+        # BALANSDAN PULNI YECHAMIZ
+        add_balance(user.id, -total_price, user.username)
+        new_balance = get_balance(user.id)
+
+        buyer_username = f"@{user.username}" if user.username else "yo'q"
+
+        text = (
+            f"🛒 <b>Yangi Stars Buyurtmasi!</b>\n\n"
+            f"👤 <b>Xaridor:</b> <code>{user.id}</code> ({html.escape(buyer_username)})\n"
+            f"🎯 <b>Qabul qiluvchi:</b> {html.escape(target_user)}\n"
+            f"⭐️ <b>Stars:</b> {stars_count}\n"
+            f"💰 <b>Yechilgan summa:</b> {total_price:,} so'm\n"
+            f"💳 <b>Qolgan balans:</b> {new_balance:,} so'm"
+        )
+        
+        try:
+            await context.bot.send_message(chat_id=GROUP_ID, text=text, parse_mode="HTML")
+        except Exception as e:
+            logging.error(f"Guruhga Stars buyurtmasini yuborishda xatolik: {e}")
+
+        await update.message.reply_text(
+            f"✅ <b>Stars buyurtmasi qabul qilindi!</b>\n\n"
+            f"⭐️ Stars: <b>{stars_count}</b>\n"
+            f"💰 Yechilgan summa: <b>{total_price:,} so'm</b>\n"
+            f"💳 Hozirgi balansingiz: <b>{new_balance:,} so'm</b>",
+            parse_mode="HTML"
+        )
+
     except Exception as e:
-        logging.error(f"Guruhga Stars buyurtmasini yuborishda xatolik: {e}")
+        logging.error(f"Web App ma'lumotida xatolik: {e}")
+        await update.message.reply_text("❌ Xatolik yuz berdi! Qaytadan urinib ko'ring.")
 
-    await update.message.reply_text(
-        f"✅ <b>Stars buyurtmasi qabul qilindi!</b>\n\n⭐️ Stars: {stars_count}\n💰 Summa: {total_price:,} so'm",
-        parse_mode="HTML"
-    )
-
+# --- ADMIN PANEL ---
 async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -378,8 +392,6 @@ async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("⬅️ Bosh menyu", callback_data="back_to_main")]
     ]
     await query.edit_message_text("⚙️ Admin Panel\n\nKerakli bo'limni tanlang:", reply_markup=InlineKeyboardMarkup(keyboard))
-
-# --- ADMIN BALANS QO'SHISH / AYIRISH (ID yoki USERNAME bo'yicha) ---
 
 async def add_balance_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
