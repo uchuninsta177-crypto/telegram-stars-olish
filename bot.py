@@ -3,7 +3,7 @@ import json
 import logging
 import os
 
-from database import add_balance, get_balance, init_db
+from database import add_balance, get_balance, get_user_id_by_input, init_db
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, WebAppInfo
 from telegram.ext import (
     ApplicationBuilder,
@@ -59,9 +59,10 @@ CANCEL_KEYBOARD = InlineKeyboardMarkup(
 
 async def send_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, text_prefix: str = ""):
     user = update.effective_user
+    # Har safar foydalanuvchining username va balansini bazada yangilab qo'yamiz
+    add_balance(user.id, 0, user.username)
     user_balance = get_balance(user.id)
 
-    # WebApp URL va balans parametri
     web_app_url = f"https://uchuninsta177-crypto.github.io/telegram-stars-olish/?balance={user_balance}"
 
     keyboard = [
@@ -108,7 +109,7 @@ async def cancel_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    add_balance(user.id, 0)
+    add_balance(user.id, 0, user.username)
     await send_main_menu(update, context)
 
 async def topup_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -283,8 +284,7 @@ async def process_gift_purchase(update: Update, context: ContextTypes.DEFAULT_TY
         )
         return ConversationHandler.END
 
-    # Balansdan ayirish
-    add_balance(user.id, -price_som)
+    add_balance(user.id, -price_som, user.username)
     new_balance = get_balance(user.id)
 
     buyer_username = f"@{user.username}" if user.username else "No_Username"
@@ -344,7 +344,7 @@ async def webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    add_balance(user.id, -total_price)
+    add_balance(user.id, -total_price, user.username)
     new_balance = get_balance(user.id)
 
     buyer_username = f"@{user.username}" if user.username else "yo'q"
@@ -379,63 +379,77 @@ async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     await query.edit_message_text("⚙️ Admin Panel\n\nKerakli bo'limni tanlang:", reply_markup=InlineKeyboardMarkup(keyboard))
 
+# --- ADMIN BALANS QO'SHISH / AYIRISH (ID yoki USERNAME bo'yicha) ---
+
 async def add_balance_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     if query.from_user.id != ADMIN_ID: return ConversationHandler.END
-    await query.message.reply_text("👤 User ID yuboring:", reply_markup=CANCEL_KEYBOARD)
+    await query.message.reply_text("👤 Foydalanuvchining **User ID** yoki **@username** ini yuboring:", reply_markup=CANCEL_KEYBOARD, parse_mode="Markdown")
     return WAIT_ADD_USER
 
 async def receive_add_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    try:
-        context.user_data["target_user"] = int(update.message.text)
-    except ValueError:
-        await update.message.reply_text("❌ Faqat User ID (son) yuboring.", reply_markup=CANCEL_KEYBOARD)
+    user_input = update.message.text.strip()
+    target_id = get_user_id_by_input(user_input)
+
+    if not target_id:
+        await update.message.reply_text("❌ Foydalanuvchi topilmadi! User botga /start bosganiga va kiritish to'g'riligiga ishonch hosil qiling.", reply_markup=CANCEL_KEYBOARD)
         return WAIT_ADD_USER
-    await update.message.reply_text("💰 Qo'shiladigan summani yuboring:", reply_markup=CANCEL_KEYBOARD)
+
+    context.user_data["target_user"] = target_id
+    await update.message.reply_text(f"✅ Foydalanuvchi topildi (ID: <code>{target_id}</code>).\n\n💰 Qo'shiladigan summani yuboring:", parse_mode="HTML", reply_markup=CANCEL_KEYBOARD)
     return WAIT_ADD_AMOUNT
 
 async def receive_add_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        amount = int(update.message.text)
+        amount = int(update.message.text.strip())
     except ValueError:
         await update.message.reply_text("❌ Faqat son kiriting.", reply_markup=CANCEL_KEYBOARD)
         return WAIT_ADD_AMOUNT
+
     user_id = context.user_data["target_user"]
     add_balance(user_id, amount)
     balance = get_balance(user_id)
+
     try:
         await context.bot.send_message(chat_id=user_id, text=f"🎉 <b>Balansingiz to'ldirildi!</b>\n\n➕ <b>Qo'shildi:</b> {amount:,} so'm\n💳 <b>Jami balans:</b> {balance:,} so'm", parse_mode="HTML")
-    except Exception: pass
-    await update.message.reply_text(f"✅ Balans qo'shildi!\n\n👤 User ID: {user_id}\n➕ Qo'shildi: {amount:,} so'm\n💳 Yangi balans: {balance:,} so'm")
+    except Exception:
+        pass
+
+    await update.message.reply_text(f"✅ Balans qo'shildi!\n\n👤 User ID: <code>{user_id}</code>\n➕ Qo'shildi: {amount:,} so'm\n💳 Yangi balans: {balance:,} so'm", parse_mode="HTML")
     return ConversationHandler.END
 
 async def remove_balance_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     if query.from_user.id != ADMIN_ID: return ConversationHandler.END
-    await query.message.reply_text("👤 User ID yuboring:", reply_markup=CANCEL_KEYBOARD)
+    await query.message.reply_text("👤 Foydalanuvchining **User ID** yoki **@username** ini yuboring:", reply_markup=CANCEL_KEYBOARD, parse_mode="Markdown")
     return WAIT_REMOVE_USER
 
 async def receive_remove_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    try:
-        context.user_data["target_user"] = int(update.message.text)
-    except ValueError:
-        await update.message.reply_text("❌ Faqat User ID (son) yuboring.", reply_markup=CANCEL_KEYBOARD)
+    user_input = update.message.text.strip()
+    target_id = get_user_id_by_input(user_input)
+
+    if not target_id:
+        await update.message.reply_text("❌ Foydalanuvchi topilmadi! Kiritish to'g'riligiga ishonch hosil qiling.", reply_markup=CANCEL_KEYBOARD)
         return WAIT_REMOVE_USER
-    await update.message.reply_text("💰 Ayiriladigan summani yuboring:", reply_markup=CANCEL_KEYBOARD)
+
+    context.user_data["target_user"] = target_id
+    await update.message.reply_text(f"✅ Foydalanuvchi topildi (ID: <code>{target_id}</code>).\n\n💰 Ayiriladigan summani yuboring:", parse_mode="HTML", reply_markup=CANCEL_KEYBOARD)
     return WAIT_REMOVE_AMOUNT
 
 async def receive_remove_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        amount = int(update.message.text)
+        amount = int(update.message.text.strip())
     except ValueError:
         await update.message.reply_text("❌ Faqat son kiriting.", reply_markup=CANCEL_KEYBOARD)
         return WAIT_REMOVE_AMOUNT
+
     user_id = context.user_data["target_user"]
     add_balance(user_id, -amount)
     balance = get_balance(user_id)
-    await update.message.reply_text(f"✅ Balans ayirildi!\n\n👤 User ID: {user_id}\n➖ Ayirildi: {amount:,} so'm\n💳 Yangi balans: {balance:,} so'm")
+
+    await update.message.reply_text(f"✅ Balans ayirildi!\n\n👤 User ID: <code>{user_id}</code>\n➖ Ayirildi: {amount:,} so'm\n💳 Yangi balans: {balance:,} so'm", parse_mode="HTML")
     return ConversationHandler.END
 
 if __name__ == "__main__":
