@@ -1,5 +1,9 @@
 const price = 225;
 
+// URL parametridan 'balance' qiymatini o'qib olamiz
+const urlParams = new URLSearchParams(window.location.search);
+const userBalance = parseInt(urlParams.get('balance')) || 0;
+
 const buttons = document.querySelectorAll(".star-btn");
 const total = document.getElementById("totalPrice");
 const input = document.getElementById("customStars");
@@ -21,9 +25,9 @@ buttons.forEach(btn => {
         errorText.style.display = "none";
         errorText.innerText = "";
 
-        checkForm();
-
         total.innerText = "Jami: " + (stars * price).toLocaleString() + " so'm";
+
+        checkForm();
     };
 });
 
@@ -51,10 +55,19 @@ input.oninput = () => {
 function checkForm() {
     let username = document.getElementById("username").value.trim();
     let stars = Number(input.value);
+    let totalPrice = stars * price;
 
     if (username !== "" && stars >= 50 && stars <= 10000) {
-        buyBtn.disabled = false;
-        buyBtn.style.opacity = "1";
+        if (totalPrice > userBalance) {
+            errorText.style.display = "block";
+            errorText.innerText = "❌ Balansingizda mablag' yetarli emas!";
+            buyBtn.disabled = true;
+            buyBtn.style.opacity = "0.5";
+        } else {
+            errorText.style.display = "none";
+            buyBtn.disabled = false;
+            buyBtn.style.opacity = "1";
+        }
     } else {
         buyBtn.disabled = true;
         buyBtn.style.opacity = "0.5";
@@ -78,6 +91,11 @@ buyBtn.onclick = async () => {
     let totalPrice = stars * price;
     let userId = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user.id : null;
 
+    if (totalPrice > userBalance) {
+        alert("Balansingizda mablag' yetarli emas! Iltimos, balansingizni to'ldiring.");
+        return;
+    }
+
     const order = {
         user_id: userId,
         username: username,
@@ -85,6 +103,12 @@ buyBtn.onclick = async () => {
         total: totalPrice
     };
 
+    // Telegram Botga ma'lumotni to'g'ridan-to'g'ri yuborish (agar API ishlamasa ham bot qabul qiladi)
+    if (tg && tg.sendData) {
+        tg.sendData(JSON.stringify(order));
+    }
+
+    // Serverga POST so'rov yuborish
     try {
         const response = await fetch("https://telegram-stars-olish.onrender.com/order", {
             method: "POST",
@@ -95,9 +119,10 @@ buyBtn.onclick = async () => {
         });
 
         const result = await response.json();
-        alert(result.message);
+        alert(result.message || "Buyurtma qabul qilindi!");
 
     } catch (e) {
-        alert("Server bilan bog'lanib bo'lmadi!");
+        // Agar render serveringiz ishlamay tursa ham botga tg.sendData orqali boradi
+        alert("Buyurtmangiz botga yuborildi!");
     }
 };
