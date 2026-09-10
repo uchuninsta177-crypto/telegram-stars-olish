@@ -50,14 +50,17 @@ GIFTS_DB = {
     "item_rocket_50": ("🚀 Raketa (50 stars)", 50, "11000"),
     "item_ring_100": ("💍 Uzuk (100 stars)", 100, "22000"),
     "item_trophy_100": ("🏆 Kubok (100 stars)", 100, "22000"),
-    "item_diamond_100": ("💎 Olmos (100 stars)", 100, "22000")
+    "item_diamond_100": ("💎 Olmos (100 stars)", 100, "22000"),
 }
 
 CANCEL_KEYBOARD = InlineKeyboardMarkup(
     [[InlineKeyboardButton("❌ Bekor qilish", callback_data="cancel_action")]]
 )
 
-async def send_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, text_prefix: str = ""):
+
+async def send_main_menu(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, text_prefix: str = ""
+):
     user = update.effective_user
     add_balance(user.id, 0, user.username)
     user_balance = get_balance(user.id)
@@ -72,44 +75,51 @@ async def send_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, tex
             )
         ],
         [InlineKeyboardButton("🎁 Gift olish", callback_data="show_gifts")],
-        [InlineKeyboardButton("💳 Balans to'ldirish", callback_data="topup_balance")],
+        [
+            InlineKeyboardButton(
+                "💳 Balans to'ldirish", callback_data="topup_balance"
+            )
+        ],
     ]
 
     if user.id == ADMIN_ID:
-        keyboard.append([InlineKeyboardButton("⚙️ Admin Panel", callback_data="admin_panel")])
+        keyboard.append(
+            [InlineKeyboardButton("⚙️ Admin Panel", callback_data="admin_panel")]
+        )
 
     msg_text = f"{text_prefix}Salom, <b>{html.escape(user.first_name)}</b>! 👋\n\n💳 <b>Balansingiz:</b> {user_balance:,} so'm\n\nKerakli xizmatni tanlang:"
 
     if update.callback_query:
         await update.callback_query.message.reply_text(
-            msg_text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode="HTML"
+            msg_text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="HTML"
         )
     else:
         await update.message.reply_text(
-            msg_text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode="HTML"
+            msg_text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="HTML"
         )
+
 
 async def cancel_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     context.user_data.clear()
-    
+
     try:
         await query.message.delete()
     except Exception:
         pass
 
-    await send_main_menu(update, context, text_prefix="❌ Amaliyot bekor qilindi.\n\n")
+    await send_main_menu(
+        update, context, text_prefix="❌ Amaliyot bekor qilindi.\n\n"
+    )
     return ConversationHandler.END
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     add_balance(user.id, 0, user.username)
     await send_main_menu(update, context)
+
 
 async def topup_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -120,18 +130,21 @@ async def topup_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Minimal summa: <b>3,500 so'm</b>\n\n"
         "<i>(Faqat raqamda kiriting, masalan: 5000)</i>",
         parse_mode="HTML",
-        reply_markup=CANCEL_KEYBOARD
+        reply_markup=CANCEL_KEYBOARD,
     )
     return WAIT_TOPUP_AMOUNT
 
-async def process_topup_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+async def process_topup_amount(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
     text = update.message.text.strip().replace(" ", "").replace(",", "")
 
     if not text.isdigit():
         await update.message.reply_text(
             "❌ <b>Iltimos, faqat raqam kiriting!</b>\n\nMasalan: 5000",
             parse_mode="HTML",
-            reply_markup=CANCEL_KEYBOARD
+            reply_markup=CANCEL_KEYBOARD,
         )
         return WAIT_TOPUP_AMOUNT
 
@@ -141,7 +154,7 @@ async def process_topup_amount(update: Update, context: ContextTypes.DEFAULT_TYP
         await update.message.reply_text(
             "❌ <b>Xatolik:</b> Minimal balans to'ldirish summasi <b>3,500 so'm</b>",
             parse_mode="HTML",
-            reply_markup=CANCEL_KEYBOARD
+            reply_markup=CANCEL_KEYBOARD,
         )
         return WAIT_TOPUP_AMOUNT
 
@@ -156,19 +169,25 @@ async def process_topup_amount(update: Update, context: ContextTypes.DEFAULT_TYP
         f"📸 <b>To'lov qilib bo'lgach, to'lov cheki rasmini shu yerga yuboring:</b>\n\n"
         f"‼️ <i>Eslatma: 30 daqiqa ichida chek yubormasangiz pulingiz tushmay qolishi mumkin!</i>",
         parse_mode="HTML",
-        reply_markup=CANCEL_KEYBOARD
+        reply_markup=CANCEL_KEYBOARD,
     )
     return WAIT_RECEIPT_PHOTO
 
-async def invalid_receipt_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+async def invalid_receipt_text(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
     await update.message.reply_text(
         "❌ <b>Xatolik:</b> Iltimos, faqat rasm (chek) yuboring!",
         parse_mode="HTML",
-        reply_markup=CANCEL_KEYBOARD
+        reply_markup=CANCEL_KEYBOARD,
     )
     return WAIT_RECEIPT_PHOTO
 
-async def process_receipt_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+async def process_receipt_photo(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
     photo_file_id = update.message.photo[-1].file_id
     user = update.effective_user
     amount = context.user_data.get("topup_amount", 0)
@@ -188,7 +207,7 @@ async def process_receipt_photo(update: Update, context: ContextTypes.DEFAULT_TY
             chat_id=GROUP_ID,
             photo=photo_file_id,
             caption=admin_caption,
-            parse_mode="HTML"
+            parse_mode="HTML",
         )
     except Exception as e:
         logging.error(f"Adminga rasm yuborishda xatolik: {e}")
@@ -196,12 +215,13 @@ async def process_receipt_photo(update: Update, context: ContextTypes.DEFAULT_TY
     await update.message.reply_text(
         "✅ <b>To'lov cheki qabul qilindi!</b>\n\n"
         "Administrator chekni tekshirib chiqib, tez orada balansingizni to'ldirib beradi.",
-        parse_mode="HTML"
+        parse_mode="HTML",
     )
 
     await send_main_menu(update, context)
     context.user_data.clear()
     return ConversationHandler.END
+
 
 async def show_gifts(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -209,41 +229,94 @@ async def show_gifts(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("💝 🧸 (15 Stars)", callback_data="cat_15")],
         [InlineKeyboardButton("🌹 🎁 (25 Stars)", callback_data="cat_25")],
-        [InlineKeyboardButton("💐 🎂 🍾 🚀 (50 Stars)", callback_data="cat_50")],
+        [
+            InlineKeyboardButton(
+                "💐 🎂 🍾 🚀 (50 Stars)", callback_data="cat_50"
+            )
+        ],
         [InlineKeyboardButton("💍 🏆 💎 (100 Stars)", callback_data="cat_100")],
-        [InlineKeyboardButton("⬅️ Orqaga", callback_data="back_to_main")]
+        [InlineKeyboardButton("⬅️ Orqaga", callback_data="back_to_main")],
     ]
-    await query.edit_message_text("🎁 <b>Biror gift turini tanlang:</b>", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="HTML")
+    await query.edit_message_text(
+        "🎁 <b>Biror gift turini tanlang:</b>",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="HTML",
+    )
 
-async def select_gift_category(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+async def select_gift_category(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
     query = update.callback_query
     await query.answer()
     category = query.data
     category_items = {
-        "cat_15": [InlineKeyboardButton("💝 Yurak", callback_data="item_heart_15"), InlineKeyboardButton("🧸 Ayiqcha", callback_data="item_bear_15")],
-        "cat_25": [InlineKeyboardButton("🌹 Atirgul", callback_data="item_rose_25"), InlineKeyboardButton("🎁 Sovg'a quti", callback_data="item_box_25")],
-        "cat_50": [InlineKeyboardButton("💐 Buket", callback_data="item_bouquet_50"), InlineKeyboardButton("🎂 Tort", callback_data="item_cake_50"), InlineKeyboardButton("🍾 Shampan", callback_data="item_champagne_50"), InlineKeyboardButton("🚀 Raketa", callback_data="item_rocket_50")],
-        "cat_100": [InlineKeyboardButton("💍 Uzuk", callback_data="item_ring_100"), InlineKeyboardButton("🏆 Kubok", callback_data="item_trophy_100"), InlineKeyboardButton("💎 Olmos", callback_data="item_diamond_100")]
+        "cat_15": [
+            InlineKeyboardButton("💝 Yurak", callback_data="item_heart_15"),
+            InlineKeyboardButton("🧸 Ayiqcha", callback_data="item_bear_15"),
+        ],
+        "cat_25": [
+            InlineKeyboardButton("🌹 Atirgul", callback_data="item_rose_25"),
+            InlineKeyboardButton("🎁 Sovg'a quti", callback_data="item_box_25"),
+        ],
+        "cat_50": [
+            InlineKeyboardButton(
+                "💐 Buket", callback_data="item_bouquet_50"
+            ),
+            InlineKeyboardButton("🎂 Tort", callback_data="item_cake_50"),
+            InlineKeyboardButton(
+                "🍾 Shampan", callback_data="item_champagne_50"
+            ),
+            InlineKeyboardButton("🚀 Raketa", callback_data="item_rocket_50"),
+        ],
+        "cat_100": [
+            InlineKeyboardButton("💍 Uzuk", callback_data="item_ring_100"),
+            InlineKeyboardButton("🏆 Kubok", callback_data="item_trophy_100"),
+            InlineKeyboardButton("💎 Olmos", callback_data="item_diamond_100"),
+        ],
     }
     if category in category_items:
         buttons = [[btn] for btn in category_items[category]]
-        buttons.append([InlineKeyboardButton("⬅️ Orqaga", callback_data="show_gifts")])
-        await query.edit_message_text("👇 <b>Biror giftni tanlang:</b>", reply_markup=InlineKeyboardMarkup(buttons), parse_mode="HTML")
+        buttons.append(
+            [InlineKeyboardButton("⬅️ Orqaga", callback_data="show_gifts")]
+        )
+        await query.edit_message_text(
+            "👇 <b>Biror giftni tanlang:</b>",
+            reply_markup=InlineKeyboardMarkup(buttons),
+            parse_mode="HTML",
+        )
 
-async def show_gift_details(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+async def show_gift_details(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
     query = update.callback_query
     await query.answer()
     item_key = query.data
     if item_key in GIFTS_DB:
         gift_name, stars, price_som = GIFTS_DB[item_key]
-        keyboard = [[InlineKeyboardButton("✅ Sotib olish", callback_data=f"buy_{item_key}")], [InlineKeyboardButton("⬅️ Orqaga", callback_data=f"cat_{stars}")]]
+        keyboard = [
+            [
+                InlineKeyboardButton(
+                    "✅ Sotib olish", callback_data=f"buy_{item_key}"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "⬅️ Orqaga", callback_data=f"cat_{stars}"
+                )
+            ],
+        ]
         await query.edit_message_text(
             f"🎁 <b>Siz tanlagan gift:</b> {gift_name}\n⭐️ <b>Narxi:</b> {price_som} so'm\n\nSotib olishni tasdiqlaysizmi?",
             reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode="HTML"
+            parse_mode="HTML",
         )
 
-async def ask_username_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+async def ask_username_start(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
     query = update.callback_query
     await query.answer()
     gift_key = query.data.replace("buy_", "")
@@ -251,11 +324,14 @@ async def ask_username_start(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await query.message.reply_text(
         "✏️ Gift yuborilishi kerak bo'lgan Telegram Username (nikingiz)ni kiriting:\n\n<i>(Masalan: @username)</i>",
         parse_mode="HTML",
-        reply_markup=CANCEL_KEYBOARD
+        reply_markup=CANCEL_KEYBOARD,
     )
     return WAIT_TARGET_USERNAME
 
-async def process_gift_purchase(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+async def process_gift_purchase(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
     target_username = update.message.text.strip()
     if not target_username.startswith("@"):
         target_username = f"@{target_username}"
@@ -264,7 +340,9 @@ async def process_gift_purchase(update: Update, context: ContextTypes.DEFAULT_TY
     buy_key = context.user_data.get("selected_gift_key")
 
     if not buy_key or buy_key not in GIFTS_DB:
-        await update.message.reply_text("❌ Xatolik yuz berdi. Qaytadan urinib ko'ring.")
+        await update.message.reply_text(
+            "❌ Xatolik yuz berdi. Qaytadan urinib ko'ring."
+        )
         return ConversationHandler.END
 
     gift_name, stars, price_som_str = GIFTS_DB[buy_key]
@@ -273,13 +351,21 @@ async def process_gift_purchase(update: Update, context: ContextTypes.DEFAULT_TY
 
     if user_balance < price_som:
         keyboard = [
-            [InlineKeyboardButton("💳 Balans to'ldirish", callback_data="topup_balance")],
-            [InlineKeyboardButton("🎁 Giftlar bo'limi", callback_data="show_gifts")]
+            [
+                InlineKeyboardButton(
+                    "💳 Balans to'ldirish", callback_data="topup_balance"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "🎁 Giftlar bo'limi", callback_data="show_gifts"
+                )
+            ],
         ]
         await update.message.reply_text(
             f"❌ <b>Mablag' yetarli emas!</b>\n\n🎁 Gift narxi: {price_som:,} so'm\n💳 Sizning balansingiz: {user_balance:,} so'm",
             reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode="HTML"
+            parse_mode="HTML",
         )
         return ConversationHandler.END
 
@@ -298,7 +384,9 @@ async def process_gift_purchase(update: Update, context: ContextTypes.DEFAULT_TY
     )
 
     try:
-        await context.bot.send_message(chat_id=GROUP_ID, text=text, parse_mode="HTML")
+        await context.bot.send_message(
+            chat_id=GROUP_ID, text=text, parse_mode="HTML"
+        )
     except Exception as e:
         logging.error(f"Guruhga xabar yuborishda xatolik: {e}")
 
@@ -307,12 +395,13 @@ async def process_gift_purchase(update: Update, context: ContextTypes.DEFAULT_TY
         f"📩 <b>Username:</b> {html.escape(target_username)}\n"
         f"🎁 <b>Gift:</b> {gift_name}\n"
         f"💰 <b>Yechilgan summa:</b> {price_som:,} so'm",
-        parse_mode="HTML"
+        parse_mode="HTML",
     )
 
     await send_main_menu(update, context)
     context.user_data.clear()
     return ConversationHandler.END
+
 
 async def back_to_main(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -323,100 +412,147 @@ async def back_to_main(update: Update, context: ContextTypes.DEFAULT_TYPE):
         pass
     await send_main_menu(update, context)
 
-# --- WEB APP DAN KELGAN STARS BUYURTMASINI QABUL QILISH VA BALANSDAN YECHISH ---
+
+# ==============================================================================
+# --- WEB APP'DAN KELGAN STARS BUYURTMASINI QABUL QILISH VA BALANSDAN YECHISH ---
+# ==============================================================================
 async def webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    
+
     try:
         raw_data = update.effective_message.web_app_data.data
         data = json.loads(raw_data)
-        
-        total_price = int(data.get('total', 0))
-        stars_count = int(data.get('stars', 0))
-        target_user = str(data.get('username', user.username or "")).strip()
+
+        # Web App JSON ma'lumotlaridan 'total', 'stars' va 'username' ni o'qiymiz
+        total_price = int(data.get("total", 0))
+        stars_count = int(data.get("stars", 0))
+        target_user = str(
+            data.get("username", user.username or "")
+        ).strip()
 
         if target_user and not target_user.startswith("@"):
             target_user = f"@{target_user}"
 
         user_balance = get_balance(user.id)
 
+        # Balans yetarliligini qayta tekshiramiz
         if user_balance < total_price or total_price <= 0:
             await update.message.reply_text(
                 f"❌ <b>Mablag' yetarli emas!</b>\n\n"
                 f"⭐️ Buyurtma summasi: {total_price:,} so'm\n"
                 f"💳 Balansingiz: {user_balance:,} so'm",
-                parse_mode="HTML"
+                parse_mode="HTML",
             )
             return
 
-        # BALANSDAN PULNI YECHAMIZ
+        # ‼️ AYNAN SHU SATR BALANSDAN PULNI YECHADI (MINUS ISHORASI BILAN) ‼️
         add_balance(user.id, -total_price, user.username)
         new_balance = get_balance(user.id)
 
         buyer_username = f"@{user.username}" if user.username else "yo'q"
 
+        # Guruhga adminga bildirishnoma yuboramiz
         text = (
             f"🛒 <b>Yangi Stars Buyurtmasi!</b>\n\n"
-            f"👤 <b>Xaridor:</b> <code>{user.id}</code> ({html.escape(buyer_username)})\n"
+            f"👤 <b>Xaridor ID:</b> <code>{user.id}</code> ({html.escape(buyer_username)})\n"
             f"🎯 <b>Qabul qiluvchi:</b> {html.escape(target_user)}\n"
-            f"⭐️ <b>Stars:</b> {stars_count}\n"
+            f"⭐️ <b>Stars soni:</b> {stars_count}\n"
             f"💰 <b>Yechilgan summa:</b> {total_price:,} so'm\n"
             f"💳 <b>Qolgan balans:</b> {new_balance:,} so'm"
         )
-        
+
         try:
-            await context.bot.send_message(chat_id=GROUP_ID, text=text, parse_mode="HTML")
+            await context.bot.send_message(
+                chat_id=GROUP_ID, text=text, parse_mode="HTML"
+            )
         except Exception as e:
             logging.error(f"Guruhga Stars buyurtmasini yuborishda xatolik: {e}")
 
+        # Foydalanuvchiga muvaffaqiyatli xabar
         await update.message.reply_text(
-            f"✅ <b>Stars buyurtmasi qabul qilindi!</b>\n\n"
+            f"✅ <b>Stars buyurtmangiz qabul qilindi!</b>\n\n"
             f"⭐️ Stars: <b>{stars_count}</b>\n"
             f"💰 Yechilgan summa: <b>{total_price:,} so'm</b>\n"
             f"💳 Hozirgi balansingiz: <b>{new_balance:,} so'm</b>",
-            parse_mode="HTML"
+            parse_mode="HTML",
         )
 
     except Exception as e:
         logging.error(f"Web App ma'lumotida xatolik: {e}")
-        await update.message.reply_text("❌ Xatolik yuz berdi! Qaytadan urinib ko'ring.")
+        await update.message.reply_text(
+            "❌ Xatolik yuz berdi! Qaytadan urinib ko'ring."
+        )
+
 
 # --- ADMIN PANEL ---
 async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    if query.from_user.id != ADMIN_ID: return
+    if query.from_user.id != ADMIN_ID:
+        return
     keyboard = [
-        [InlineKeyboardButton("➕ Balans qo'shish", callback_data="add_balance")],
-        [InlineKeyboardButton("➖ Balans ayirish", callback_data="remove_balance")],
-        [InlineKeyboardButton("⬅️ Bosh menyu", callback_data="back_to_main")]
+        [
+            InlineKeyboardButton(
+                "➕ Balans qo'shish", callback_data="add_balance"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "➖ Balans ayirish", callback_data="remove_balance"
+            )
+        ],
+        [InlineKeyboardButton("⬅️ Bosh menyu", callback_data="back_to_main")],
     ]
-    await query.edit_message_text("⚙️ Admin Panel\n\nKerakli bo'limni tanlang:", reply_markup=InlineKeyboardMarkup(keyboard))
+    await query.edit_message_text(
+        "⚙️ Admin Panel\n\nKerakli bo'limni tanlang:",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
 
-async def add_balance_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+async def add_balance_start(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
     query = update.callback_query
     await query.answer()
-    if query.from_user.id != ADMIN_ID: return ConversationHandler.END
-    await query.message.reply_text("👤 Foydalanuvchining **User ID** yoki **@username** ini yuboring:", reply_markup=CANCEL_KEYBOARD, parse_mode="Markdown")
+    if query.from_user.id != ADMIN_ID:
+        return ConversationHandler.END
+    await query.message.reply_text(
+        "👤 Foydalanuvchining **User ID** yoki **@username** ini yuboring:",
+        reply_markup=CANCEL_KEYBOARD,
+        parse_mode="Markdown",
+    )
     return WAIT_ADD_USER
+
 
 async def receive_add_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_input = update.message.text.strip()
     target_id = get_user_id_by_input(user_input)
 
     if not target_id:
-        await update.message.reply_text("❌ Foydalanuvchi topilmadi! User botga /start bosganiga va kiritish to'g'riligiga ishonch hosil qiling.", reply_markup=CANCEL_KEYBOARD)
+        await update.message.reply_text(
+            "❌ Foydalanuvchi topilmadi! User botga /start bosganiga va kiritish to'g'riligiga ishonch hosil qiling.",
+            reply_markup=CANCEL_KEYBOARD,
+        )
         return WAIT_ADD_USER
 
     context.user_data["target_user"] = target_id
-    await update.message.reply_text(f"✅ Foydalanuvchi topildi (ID: <code>{target_id}</code>).\n\n💰 Qo'shiladigan summani yuboring:", parse_mode="HTML", reply_markup=CANCEL_KEYBOARD)
+    await update.message.reply_text(
+        f"✅ Foydalanuvchi topildi (ID: <code>{target_id}</code>).\n\n💰 Qo'shiladigan summani yuboring:",
+        parse_mode="HTML",
+        reply_markup=CANCEL_KEYBOARD,
+    )
     return WAIT_ADD_AMOUNT
 
-async def receive_add_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+async def receive_add_amount(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
     try:
         amount = int(update.message.text.strip())
     except ValueError:
-        await update.message.reply_text("❌ Faqat son kiriting.", reply_markup=CANCEL_KEYBOARD)
+        await update.message.reply_text(
+            "❌ Faqat son kiriting.", reply_markup=CANCEL_KEYBOARD
+        )
         return WAIT_ADD_AMOUNT
 
     user_id = context.user_data["target_user"]
@@ -424,70 +560,116 @@ async def receive_add_amount(update: Update, context: ContextTypes.DEFAULT_TYPE)
     balance = get_balance(user_id)
 
     try:
-        await context.bot.send_message(chat_id=user_id, text=f"🎉 <b>Balansingiz to'ldirildi!</b>\n\n➕ <b>Qo'shildi:</b> {amount:,} so'm\n💳 <b>Jami balans:</b> {balance:,} so'm", parse_mode="HTML")
+        await context.bot.send_message(
+            chat_id=user_id,
+            text=f"🎉 <b>Balansingiz to'ldirildi!</b>\n\n➕ <b>Qo'shildi:</b> {amount:,} so'm\n💳 <b>Jami balans:</b> {balance:,} so'm",
+            parse_mode="HTML",
+        )
     except Exception:
         pass
 
-    await update.message.reply_text(f"✅ Balans qo'shildi!\n\n👤 User ID: <code>{user_id}</code>\n➕ Qo'shildi: {amount:,} so'm\n💳 Yangi balans: {balance:,} so'm", parse_mode="HTML")
+    await update.message.reply_text(
+        f"✅ Balans qo'shildi!\n\n👤 User ID: <code>{user_id}</code>\n➕ Qo'shildi: {amount:,} so'm\n💳 Yangi balans: {balance:,} so'm",
+        parse_mode="HTML",
+    )
     return ConversationHandler.END
 
-async def remove_balance_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+async def remove_balance_start(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
     query = update.callback_query
     await query.answer()
-    if query.from_user.id != ADMIN_ID: return ConversationHandler.END
-    await query.message.reply_text("👤 Foydalanuvchining **User ID** yoki **@username** ini yuboring:", reply_markup=CANCEL_KEYBOARD, parse_mode="Markdown")
+    if query.from_user.id != ADMIN_ID:
+        return ConversationHandler.END
+    await query.message.reply_text(
+        "👤 Foydalanuvchining **User ID** yoki **@username** ini yuboring:",
+        reply_markup=CANCEL_KEYBOARD,
+        parse_mode="Markdown",
+    )
     return WAIT_REMOVE_USER
 
-async def receive_remove_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+async def receive_remove_user(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
     user_input = update.message.text.strip()
     target_id = get_user_id_by_input(user_input)
 
     if not target_id:
-        await update.message.reply_text("❌ Foydalanuvchi topilmadi! Kiritish to'g'riligiga ishonch hosil qiling.", reply_markup=CANCEL_KEYBOARD)
+        await update.message.reply_text(
+            "❌ Foydalanuvchi topilmadi! Kiritish to'g'riligiga ishonch hosil qiling.",
+            reply_markup=CANCEL_KEYBOARD,
+        )
         return WAIT_REMOVE_USER
 
     context.user_data["target_user"] = target_id
-    await update.message.reply_text(f"✅ Foydalanuvchi topildi (ID: <code>{target_id}</code>).\n\n💰 Ayiriladigan summani yuboring:", parse_mode="HTML", reply_markup=CANCEL_KEYBOARD)
+    await update.message.reply_text(
+        f"✅ Foydalanuvchi topildi (ID: <code>{target_id}</code>).\n\n💰 Ayiriladigan summani yuboring:",
+        parse_mode="HTML",
+        reply_markup=CANCEL_KEYBOARD,
+    )
     return WAIT_REMOVE_AMOUNT
 
-async def receive_remove_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+async def receive_remove_amount(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
     try:
         amount = int(update.message.text.strip())
     except ValueError:
-        await update.message.reply_text("❌ Faqat son kiriting.", reply_markup=CANCEL_KEYBOARD)
+        await update.message.reply_text(
+            "❌ Faqat son kiriting.", reply_markup=CANCEL_KEYBOARD
+        )
         return WAIT_REMOVE_AMOUNT
 
     user_id = context.user_data["target_user"]
     add_balance(user_id, -amount)
     balance = get_balance(user_id)
 
-    await update.message.reply_text(f"✅ Balans ayirildi!\n\n👤 User ID: <code>{user_id}</code>\n➖ Ayirildi: {amount:,} so'm\n💳 Yangi balans: {balance:,} so'm", parse_mode="HTML")
+    await update.message.reply_text(
+        f"✅ Balans ayirildi!\n\n👤 User ID: <code>{user_id}</code>\n➖ Ayirildi: {amount:,} so'm\n💳 Yangi balans: {balance:,} so'm",
+        parse_mode="HTML",
+    )
     return ConversationHandler.END
+
 
 if __name__ == "__main__":
     init_db()
     app = ApplicationBuilder().token(BOT_TOKEN).build()
-    common_fallbacks = [CallbackQueryHandler(cancel_action, pattern="^cancel_action$")]
+    common_fallbacks = [
+        CallbackQueryHandler(cancel_action, pattern="^cancel_action$")
+    ]
 
     topup_handler = ConversationHandler(
-        entry_points=[CallbackQueryHandler(topup_start, pattern="^topup_balance$")],
+        entry_points=[
+            CallbackQueryHandler(topup_start, pattern="^topup_balance$")
+        ],
         states={
             WAIT_TOPUP_AMOUNT: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, process_topup_amount)
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND, process_topup_amount
+                )
             ],
             WAIT_RECEIPT_PHOTO: [
                 MessageHandler(filters.PHOTO, process_receipt_photo),
-                MessageHandler(filters.TEXT & ~filters.COMMAND, invalid_receipt_text),
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND, invalid_receipt_text
+                ),
             ],
         },
         fallbacks=common_fallbacks,
     )
 
     buy_gift_handler = ConversationHandler(
-        entry_points=[CallbackQueryHandler(ask_username_start, pattern="^buy_")],
+        entry_points=[
+            CallbackQueryHandler(ask_username_start, pattern="^buy_")
+        ],
         states={
             WAIT_TARGET_USERNAME: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, process_gift_purchase)
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND, process_gift_purchase
+                )
             ],
         },
         fallbacks=common_fallbacks,
@@ -499,15 +681,31 @@ if __name__ == "__main__":
     app.add_handler(CallbackQueryHandler(show_gifts, pattern="^show_gifts$"))
     app.add_handler(CallbackQueryHandler(select_gift_category, pattern="^cat_"))
     app.add_handler(CallbackQueryHandler(show_gift_details, pattern="^item_"))
-    app.add_handler(CallbackQueryHandler(back_to_main, pattern="^back_to_main$"))
-    app.add_handler(CallbackQueryHandler(admin_panel, pattern="^admin_panel$"))
+    app.add_handler(
+        CallbackQueryHandler(back_to_main, pattern="^back_to_main$")
+    )
+    app.add_handler(
+        CallbackQueryHandler(admin_panel, pattern="^admin_panel$")
+    )
 
     app.add_handler(
         ConversationHandler(
-            entry_points=[CallbackQueryHandler(add_balance_start, pattern="^add_balance$")],
+            entry_points=[
+                CallbackQueryHandler(
+                    add_balance_start, pattern="^add_balance$"
+                )
+            ],
             states={
-                WAIT_ADD_USER: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_add_user)],
-                WAIT_ADD_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_add_amount)],
+                WAIT_ADD_USER: [
+                    MessageHandler(
+                        filters.TEXT & ~filters.COMMAND, receive_add_user
+                    )
+                ],
+                WAIT_ADD_AMOUNT: [
+                    MessageHandler(
+                        filters.TEXT & ~filters.COMMAND, receive_add_amount
+                    )
+                ],
             },
             fallbacks=common_fallbacks,
         )
@@ -515,16 +713,31 @@ if __name__ == "__main__":
 
     app.add_handler(
         ConversationHandler(
-            entry_points=[CallbackQueryHandler(remove_balance_start, pattern="^remove_balance$")],
+            entry_points=[
+                CallbackQueryHandler(
+                    remove_balance_start, pattern="^remove_balance$"
+                )
+            ],
             states={
-                WAIT_REMOVE_USER: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_remove_user)],
-                WAIT_REMOVE_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_remove_amount)],
+                WAIT_REMOVE_USER: [
+                    MessageHandler(
+                        filters.TEXT & ~filters.COMMAND, receive_remove_user
+                    )
+                ],
+                WAIT_REMOVE_AMOUNT: [
+                    MessageHandler(
+                        filters.TEXT & ~filters.COMMAND, receive_remove_amount
+                    )
+                ],
             },
             fallbacks=common_fallbacks,
         )
     )
 
-    app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, webapp_data))
+    # Web App dan yuborilgan ma'lumotni ushlab oluvchi asosiy handler:
+    app.add_handler(
+        MessageHandler(filters.StatusUpdate.WEB_APP_DATA, webapp_data)
+    )
 
     print("🤖 Bot ishga tushdi...")
     app.run_polling()
