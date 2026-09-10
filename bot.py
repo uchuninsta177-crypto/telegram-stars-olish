@@ -63,12 +63,18 @@ async def send_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, tex
 
     keyboard = [
         [
-            InlineKeyboardButton(
-                "⭐️ Stars olish",
-                web_app=WebAppInfo(
-                    url="https://uchuninsta177-crypto.github.io/telegram-stars-olish/"
-                ),
-            )
+         # Balansni URL parametr sifatida qo'shib yuboramiz
+web_app_url = f"https://uchuninsta177-crypto.github.io/telegram-stars-olish/?balance={user_balance}"
+
+keyboard = [
+    [
+        InlineKeyboardButton(
+            "⭐️ Stars olish",
+            web_app=WebAppInfo(url=web_app_url),
+        )
+    ],
+    # ... qolgan tugmalar
+]
         ],
         [InlineKeyboardButton("🎁 Gift olish", callback_data="show_gifts")],
         [InlineKeyboardButton("💳 Balans to'ldirish", callback_data="topup_balance")],
