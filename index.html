@@ -187,8 +187,13 @@
 
 <script>
     const price = 225;
+    const tg = window.Telegram ? window.Telegram.WebApp : null;
 
-    // URL parametridan 'balance' qiymatini o'qib olamiz
+    if (tg) {
+        tg.ready();
+        tg.expand();
+    }
+
     const urlParams = new URLSearchParams(window.location.search);
     const userBalance = parseInt(urlParams.get('balance')) || 0;
 
@@ -206,15 +211,11 @@
     buttons.forEach(btn => {
         btn.onclick = () => {
             let stars = Number(btn.innerText);
-
             input.value = stars;
             input.style.color = "white";
-
             errorText.style.display = "none";
             errorText.innerText = "";
-
             total.innerText = "Jami: " + (stars * price).toLocaleString() + " so'm";
-
             checkForm();
         };
     });
@@ -236,7 +237,6 @@
         }
 
         total.innerText = "Jami: " + (stars * price).toLocaleString() + " so'm";
-
         checkForm();
     };
 
@@ -262,8 +262,6 @@
         }
     }
 
-    const tg = window.Telegram ? window.Telegram.WebApp : null;
-
     document.getElementById("myself").onclick = () => {
         if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.username) {
             document.getElementById("username").value = "@" + tg.initDataUnsafe.user.username;
@@ -273,7 +271,7 @@
         }
     };
 
-    buyBtn.onclick = async () => {
+    buyBtn.onclick = () => {
         let username = document.getElementById("username").value.trim();
         let stars = Number(input.value);
         let totalPrice = stars * price;
@@ -291,26 +289,11 @@
             total: totalPrice
         };
 
-        // Telegram Botga ma'lumotni yuborish
         if (tg && tg.sendData) {
             tg.sendData(JSON.stringify(order));
-        }
-
-        // Serverga POST so'rov yuborish
-        try {
-            const response = await fetch("https://telegram-stars-olish.onrender.com/order", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(order)
-            });
-
-            const result = await response.json();
-            alert(result.message || "Buyurtma qabul qilindi!");
-
-        } catch (e) {
-            alert("Buyurtmangiz botga yuborildi!");
+            tg.close();
+        } else {
+            alert("Ushbu tugma faqat Telegram ilovasi ichida ishlaydi!");
         }
     };
 </script>
