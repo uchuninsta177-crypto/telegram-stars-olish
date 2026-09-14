@@ -1,72 +1,77 @@
-from flask import Flask, request, jsonify
+import os
 import sqlite3
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 import requests
-import os
 
 app = Flask(__name__)
 CORS(app)
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = "-1004457471821"
+DB_PATH = "bot.db"  # Bazangiz fayli nomi (bot.db)
+
 
 @app.route("/")
 def home():
     return "Server ishlayapti!"
 
+
 @app.route("/balance/<int:user_id>")
 def get_user_balance(user_id):
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
 
-    conn = sqlite3.connect("database.db")
-    cursor = conn.cursor()
+        cursor.execute(
+            "SELECT balance FROM users WHERE user_id=?", (user_id,)
+        )
+        row = cursor.fetchone()
+        conn.close()
 
-    cursor.execute(
-        "SELECT balance FROM users WHERE user_id=?",
-        (user_id,)
-    )
+        if row:
+            return jsonify({"success": True, "balance": row[0]})
 
-    row = cursor.fetchone()
+        return jsonify({"success": False, "balance": 0})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e), "balance": 0})
 
-    conn.close()
-
-    if row:
-        return jsonify({
-            "success": True,
-            "balance": row[0]
-        })
-
-    return jsonify({
-        "success": False,
-        "balance": 0
-    })
 
 @app.route("/order", methods=["POST"])
 def order():
-    data = request.get_json()
+    try:
+        data = request.get_json() or {}
 
-    username = data.get("username")
-    stars = data.get("stars")
-    total = data.get("total")
+        username = data.get("username", "Ko'rsatilmadi")
+        stars = data.get("stars", 0)
+        total = int(data.get("total", 0))
 
-    text = (
-        "🛒 Yangi buyurtma\n\n"
-        f"👤 Username: {username}\n"
-        f"⭐️ Stars: {stars}\n"
-        f"💰 Summa: {total:,} so'm"
-    )
+        text = (
+            "🛒 <b>Yangi buyurtma (Web Server orqali)</b>\n\n"
+            f"👤 <b>Username:</b> {username}\n"
+            f"⭐️ <b>Stars:</b> {stars}\n"
+            f"💰 <b>Summa:</b> {total:,} so'm"
+        )
 
-    requests.post(
-        f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
-        json={
-            "chat_id": CHAT_ID,
-            "text": text
-        }
-    )
+        if BOT_TOKEN:
+            requests.post(
+                f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+                json={
+                    "chat_id": CHAT_ID,
+                    "text": text,
+                    "parse_mode": "HTML",
+                },
+            )
 
-    return jsonify({
-    "success": True,
-    "message": "✅ Buyurtma qabul qilindi!                                                                     ⏳Starsingizni tez orada yetkazib beramiz!"
-})
+        return jsonify({
+            "success": True,
+            "message": "✅ Buyurtma qabul qilindi!\n⏳ Starsingizni tez orada yetkazib beramiz!",
+        })
+    except Exception as e:
+        return jsonify(
+            {"success": False, "message": f"Xatolik yuz berdi: {str(e)}"}
+        ), 500
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))

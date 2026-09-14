@@ -103,7 +103,7 @@ buyBtn.onclick = async () => {
         total: totalPrice
     };
 
-    // Telegram Botga ma'lumotni to'g'ridan-to'g'ri yuborish (agar API ishlamasa ham bot qabul qiladi)
+    // Telegram Botga ma'lumotni to'g'ridan-to'g'ri yuborish
     if (tg && tg.sendData) {
         tg.sendData(JSON.stringify(order));
     }
@@ -122,7 +122,6 @@ buyBtn.onclick = async () => {
         alert(result.message || "Buyurtma qabul qilindi!");
 
     } catch (e) {
-        // Agar render serveringiz ishlamay tursa ham botga tg.sendData orqali boradi
         alert("Buyurtmangiz botga yuborildi!");
     }
 };
