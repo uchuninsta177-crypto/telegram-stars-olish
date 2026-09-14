@@ -2,6 +2,7 @@ import html
 import json
 import logging
 import os
+import warnings
 
 from database import add_balance, get_balance, get_user_id_by_input, init_db
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, WebAppInfo
@@ -14,6 +15,10 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
+from telegram.warnings import PTBUserWarning
+
+# Ogohlantirishlarni konsolda yashirish
+warnings.filterwarnings("ignore", category=PTBUserWarning)
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
@@ -87,7 +92,10 @@ async def send_main_menu(
             [InlineKeyboardButton("⚙️ Admin Panel", callback_data="admin_panel")]
         )
 
-    msg_text = f"{text_prefix}Salom, <b>{html.escape(user.first_name)}</b>! 👋\n\n💳 <b>Balansingiz:</b> {user_balance:,} so'm\n\nKerakli xizmatni tanlang:"
+    msg_text = (
+        f"{text_prefix}Salom, <b>{html.escape(user.first_name)}</b>! 👋\n\n"
+        f"💳 <b>Balansingiz:</b> {user_balance:,} so'm\n\nKerakli xizmatni tanlang:"
+    )
 
     if update.callback_query:
         await update.callback_query.message.reply_text(
@@ -418,12 +426,15 @@ async def back_to_main(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ==============================================================================
 async def webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
+    msg = update.effective_message
+
+    if not msg or not msg.web_app_data:
+        return
 
     try:
-        raw_data = update.effective_message.web_app_data.data
+        raw_data = msg.web_app_data.data
         data = json.loads(raw_data)
 
-        # Web App JSON ma'lumotlaridan 'total', 'stars' va 'username' ni o'qiymiz
         total_price = int(data.get("total", 0))
         stars_count = int(data.get("stars", 0))
         target_user = str(
@@ -435,9 +446,8 @@ async def webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         user_balance = get_balance(user.id)
 
-        # Balans yetarliligini qayta tekshiramiz
         if user_balance < total_price or total_price <= 0:
-            await update.message.reply_text(
+            await msg.reply_text(
                 f"❌ <b>Mablag' yetarli emas!</b>\n\n"
                 f"⭐️ Buyurtma summasi: {total_price:,} so'm\n"
                 f"💳 Balansingiz: {user_balance:,} so'm",
@@ -445,13 +455,11 @@ async def webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
-        # ‼️ AYNAN SHU SATR BALANSDAN PULNI YECHADI (MINUS ISHORASI BILAN) ‼️
         add_balance(user.id, -total_price, user.username)
         new_balance = get_balance(user.id)
 
         buyer_username = f"@{user.username}" if user.username else "yo'q"
 
-        # Guruhga adminga bildirishnoma yuboramiz
         text = (
             f"🛒 <b>Yangi Stars Buyurtmasi!</b>\n\n"
             f"👤 <b>Xaridor ID:</b> <code>{user.id}</code> ({html.escape(buyer_username)})\n"
@@ -468,8 +476,7 @@ async def webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception as e:
             logging.error(f"Guruhga Stars buyurtmasini yuborishda xatolik: {e}")
 
-        # Foydalanuvchiga muvaffaqiyatli xabar
-        await update.message.reply_text(
+        await msg.reply_text(
             f"✅ <b>Stars buyurtmangiz qabul qilindi!</b>\n\n"
             f"⭐️ Stars: <b>{stars_count}</b>\n"
             f"💰 Yechilgan summa: <b>{total_price:,} so'm</b>\n"
@@ -479,7 +486,7 @@ async def webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
         logging.error(f"Web App ma'lumotida xatolik: {e}")
-        await update.message.reply_text(
+        await msg.reply_text(
             "❌ Xatolik yuz berdi! Qaytadan urinib ko'ring."
         )
 
@@ -659,6 +666,7 @@ if __name__ == "__main__":
             ],
         },
         fallbacks=common_fallbacks,
+        per_message=False,
     )
 
     buy_gift_handler = ConversationHandler(
@@ -673,11 +681,59 @@ if __name__ == "__main__":
             ],
         },
         fallbacks=common_fallbacks,
+        per_message=False,
+    )
+
+    add_balance_handler = ConversationHandler(
+        entry_points=[
+            CallbackQueryHandler(
+                add_balance_start, pattern="^add_balance$"
+            )
+        ],
+        states={
+            WAIT_ADD_USER: [
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND, receive_add_user
+                )
+            ],
+            WAIT_ADD_AMOUNT: [
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND, receive_add_amount
+                )
+            ],
+        },
+        fallbacks=common_fallbacks,
+        per_message=False,
+    )
+
+    remove_balance_handler = ConversationHandler(
+        entry_points=[
+            CallbackQueryHandler(
+                remove_balance_start, pattern="^remove_balance$"
+            )
+        ],
+        states={
+            WAIT_REMOVE_USER: [
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND, receive_remove_user
+                )
+            ],
+            WAIT_REMOVE_AMOUNT: [
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND, receive_remove_amount
+                )
+            ],
+        },
+        fallbacks=common_fallbacks,
+        per_message=False,
     )
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(topup_handler)
     app.add_handler(buy_gift_handler)
+    app.add_handler(add_balance_handler)
+    app.add_handler(remove_balance_handler)
+
     app.add_handler(CallbackQueryHandler(show_gifts, pattern="^show_gifts$"))
     app.add_handler(CallbackQueryHandler(select_gift_category, pattern="^cat_"))
     app.add_handler(CallbackQueryHandler(show_gift_details, pattern="^item_"))
@@ -688,53 +744,7 @@ if __name__ == "__main__":
         CallbackQueryHandler(admin_panel, pattern="^admin_panel$")
     )
 
-    app.add_handler(
-        ConversationHandler(
-            entry_points=[
-                CallbackQueryHandler(
-                    add_balance_start, pattern="^add_balance$"
-                )
-            ],
-            states={
-                WAIT_ADD_USER: [
-                    MessageHandler(
-                        filters.TEXT & ~filters.COMMAND, receive_add_user
-                    )
-                ],
-                WAIT_ADD_AMOUNT: [
-                    MessageHandler(
-                        filters.TEXT & ~filters.COMMAND, receive_add_amount
-                    )
-                ],
-            },
-            fallbacks=common_fallbacks,
-        )
-    )
-
-    app.add_handler(
-        ConversationHandler(
-            entry_points=[
-                CallbackQueryHandler(
-                    remove_balance_start, pattern="^remove_balance$"
-                )
-            ],
-            states={
-                WAIT_REMOVE_USER: [
-                    MessageHandler(
-                        filters.TEXT & ~filters.COMMAND, receive_remove_user
-                    )
-                ],
-                WAIT_REMOVE_AMOUNT: [
-                    MessageHandler(
-                        filters.TEXT & ~filters.COMMAND, receive_remove_amount
-                    )
-                ],
-            },
-            fallbacks=common_fallbacks,
-        )
-    )
-
-    # Web App dan yuborilgan ma'lumotni ushlab oluvchi asosiy handler:
+    # Web App dan yuborilgan ma'lumotni ushlab oluvchi handler:
     app.add_handler(
         MessageHandler(filters.StatusUpdate.WEB_APP_DATA, webapp_data)
     )
