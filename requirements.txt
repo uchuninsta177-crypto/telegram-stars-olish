@@ -1,6 +1,2 @@
-python-telegram-bot>=20.0
-flask
-flask-cors
+python-telegram-bot>=21.0
 requests
-gunicorn
-psycopg2-binary
