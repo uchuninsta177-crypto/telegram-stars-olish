@@ -22,8 +22,8 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-GROUP_ID = -1004457471821  # O'zingizning to'g'ri guruh ID ingizni tekshirib qo'ying
+BOT_TOKEN = "8734389060:AAGLkocTeMOrpPsk1vrjBny3ares9CMTa8Y"
+GROUP_ID = -1004457471821
 ADMIN_ID = 8061937333
 
 BANK_NAME = "Kapitalbank"
@@ -120,9 +120,11 @@ async def cancel_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data.clear()  # Start bosilganda eski suhbat holatini tozalash
     user = update.effective_user
     add_balance(user.id, 0, user.username)
     await send_main_menu(update, context)
+    return ConversationHandler.END
 
 
 async def topup_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -636,7 +638,9 @@ async def receive_remove_amount(
 if __name__ == "__main__":
     init_db()
     app = ApplicationBuilder().token(BOT_TOKEN).build()
+    
     common_fallbacks = [
+        CommandHandler("start", start),
         CallbackQueryHandler(cancel_action, pattern="^cancel_action$")
     ]
 
@@ -658,7 +662,6 @@ if __name__ == "__main__":
             ],
         },
         fallbacks=common_fallbacks,
-        per_message=False,
     )
 
     buy_gift_handler = ConversationHandler(
@@ -673,7 +676,6 @@ if __name__ == "__main__":
             ],
         },
         fallbacks=common_fallbacks,
-        per_message=False,
     )
 
     add_balance_handler = ConversationHandler(
@@ -695,7 +697,6 @@ if __name__ == "__main__":
             ],
         },
         fallbacks=common_fallbacks,
-        per_message=False,
     )
 
     remove_balance_handler = ConversationHandler(
@@ -717,15 +718,18 @@ if __name__ == "__main__":
             ],
         },
         fallbacks=common_fallbacks,
-        per_message=False,
     )
 
+    # 1. Boshqa handlerlardan oldin asosiy /start komandasi qo'shilishi kerak
     app.add_handler(CommandHandler("start", start))
+
+    # 2. ConversationHandlerlar ro'yxatga olinadi
     app.add_handler(topup_handler)
     app.add_handler(buy_gift_handler)
     app.add_handler(add_balance_handler)
     app.add_handler(remove_balance_handler)
 
+    # 3. Oddiy callback va status handlerlar
     app.add_handler(CallbackQueryHandler(show_gifts, pattern="^show_gifts$"))
     app.add_handler(CallbackQueryHandler(select_gift_category, pattern="^cat_"))
     app.add_handler(CallbackQueryHandler(show_gift_details, pattern="^item_"))
