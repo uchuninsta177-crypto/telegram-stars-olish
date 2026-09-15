@@ -103,12 +103,7 @@ buyBtn.onclick = async () => {
         total: totalPrice
     };
 
-    // Telegram Botga ma'lumotni to'g'ridan-to'g'ri yuborish
-    if (tg && tg.sendData) {
-        tg.sendData(JSON.stringify(order));
-    }
-
-    // Serverga POST so'rov yuborish
+    // 1. Avvalo API Serverga POST so'rov yuboramiz
     try {
         const response = await fetch("https://telegram-stars-olish.onrender.com/order", {
             method: "POST",
@@ -119,9 +114,27 @@ buyBtn.onclick = async () => {
         });
 
         const result = await response.json();
-        alert(result.message || "Buyurtma qabul qilindi!");
+
+        if (result.success) {
+            alert(result.message || "✅ Buyurtma qabul qilindi!");
+            
+            // Telegram Botga ma'lumot uzatib, so'ng oynani yopamiz
+            if (tg && tg.sendData) {
+                tg.sendData(JSON.stringify(order));
+            } else if (tg) {
+                tg.close();
+            }
+        } else {
+            alert("❌ Xatolik: " + (result.message || "Buyurtma yuborilmadi."));
+        }
 
     } catch (e) {
-        alert("Buyurtmangiz botga yuborildi!");
+        // Server ishlamay tursa ham botga ma'lumot yuborishga urinish
+        if (tg && tg.sendData) {
+            tg.sendData(JSON.stringify(order));
+            alert("Buyurtmangiz botga yuborildi!");
+        } else {
+            alert("❌ Server bilan bog'lanishda xatolik yuz berdi!");
+        }
     }
 };
