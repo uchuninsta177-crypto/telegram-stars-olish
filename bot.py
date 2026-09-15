@@ -1,7 +1,6 @@
 import html
 import json
 import logging
-import os
 import warnings
 
 from database import add_balance, get_balance, get_user_id_by_input, init_db
@@ -17,7 +16,6 @@ from telegram.ext import (
 )
 from telegram.warnings import PTBUserWarning
 
-# Ogohlantirishlarni konsolda yashirish
 warnings.filterwarnings("ignore", category=PTBUserWarning)
 
 logging.basicConfig(
@@ -25,15 +23,13 @@ logging.basicConfig(
 )
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-GROUP_ID = -1004457471821
+GROUP_ID = -1004457471821  # O'zingizning to'g'ri guruh ID ingizni tekshirib qo'ying
 ADMIN_ID = 8061937333
 
-# KARTA REKVIZITLARI
 BANK_NAME = "Kapitalbank"
 CARD_NUMBER = "8600 0000 0000 0000"
 CARD_HOLDER = "F.I.SH"
 
-# State'lar
 (
     WAIT_ADD_USER,
     WAIT_ADD_AMOUNT,
@@ -740,7 +736,6 @@ if __name__ == "__main__":
         CallbackQueryHandler(admin_panel, pattern="^admin_panel$")
     )
 
-    # Web App dan yuborilgan ma'lumotni ushlab oluvchi handler
     app.add_handler(
         MessageHandler(filters.StatusUpdate.WEB_APP_DATA, webapp_data)
     )
