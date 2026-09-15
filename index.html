@@ -35,9 +35,25 @@
 
         h2 {
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 12px;
             font-size: 22px;
             color: #ffb703;
+        }
+
+        .balance-box {
+            background: #222228;
+            border: 1px solid #33333d;
+            border-radius: 12px;
+            padding: 10px;
+            text-align: center;
+            font-size: 14px;
+            color: #aaa;
+            margin-bottom: 20px;
+        }
+
+        .balance-amount {
+            color: #2ec4b6;
+            font-weight: bold;
         }
 
         .input-group {
@@ -151,6 +167,11 @@
 <div class="container">
     <h2>⭐️ Telegram Stars Olish</h2>
 
+    <!-- Display Balance -->
+    <div class="balance-box">
+        Mavjud balans: <span class="balance-amount" id="userBalanceDisplay">0 so'm</span>
+    </div>
+
     <!-- Username Input -->
     <div class="input-group">
         <label for="username">Qabul qiluvchi Username:</label>
@@ -163,12 +184,12 @@
     <!-- Rapid Selection Buttons -->
     <label>Tezkor tanlash:</label>
     <div class="star-buttons">
-        <button class="star-btn">50</button>
-        <button class="star-btn">100</button>
-        <button class="star-btn">250</button>
-        <button class="star-btn">500</button>
-        <button class="star-btn">1000</button>
-        <button class="star-btn">2500</button>
+        <button class="star-btn" data-stars="50">50</button>
+        <button class="star-btn" data-stars="100">100</button>
+        <button class="star-btn" data-stars="250">250</button>
+        <button class="star-btn" data-stars="500">500</button>
+        <button class="star-btn" data-stars="1000">1000</button>
+        <button class="star-btn" data-stars="2500">2500</button>
     </div>
 
     <!-- Custom Stars Input -->
@@ -182,11 +203,14 @@
     <div class="total-price" id="totalPrice">Jami: 0 so'm</div>
 
     <!-- Purchase Button -->
-    <button class="buy-btn" id="buyBtn">Sotib olish</button>
+    <button class="buy-btn" id="buyBtn" disabled>Sotib olish</button>
 </div>
 
 <script>
-    const price = 225;
+    const PRICE_PER_STAR = 225;
+    const MIN_STARS = 50;
+    const MAX_STARS = 10000;
+
     const tg = window.Telegram ? window.Telegram.WebApp : null;
 
     if (tg) {
@@ -195,107 +219,123 @@
     }
 
     const urlParams = new URLSearchParams(window.location.search);
-    const userBalance = parseInt(urlParams.get('balance')) || 0;
+    const userBalance = parseInt(urlParams.get('balance'), 10) || 0;
 
-    const buttons = document.querySelectorAll(".star-btn");
-    const total = document.getElementById("totalPrice");
-    const input = document.getElementById("customStars");
+    // Elements
+    const usernameInput = document.getElementById("username");
+    const starsInput = document.getElementById("customStars");
+    const totalPriceEl = document.getElementById("totalPrice");
     const buyBtn = document.getElementById("buyBtn");
     const errorText = document.getElementById("errorText");
+    const balanceDisplay = document.getElementById("userBalanceDisplay");
+    const starButtons = document.querySelectorAll(".star-btn");
+    const myselfBtn = document.getElementById("myself");
 
-    buyBtn.disabled = true;
-    buyBtn.style.opacity = "0.5";
-
-    document.getElementById("username").oninput = checkForm;
-
-    buttons.forEach(btn => {
-        btn.onclick = () => {
-            let stars = Number(btn.innerText);
-            input.value = stars;
-            input.style.color = "white";
-            errorText.style.display = "none";
-            errorText.innerText = "";
-            total.innerText = "Jami: " + (stars * price).toLocaleString() + " so'm";
-            checkForm();
-        };
-    });
-
-    input.oninput = () => {
-        let stars = parseInt(input.value) || 0;
-
-        if (stars < 50) {
-            input.style.color = "#ff4d4d";
-            errorText.style.display = "block";
-            errorText.innerText = "❌ Minimum 50 Stars kiriting";
-        } else if (stars > 10000) {
-            input.style.color = "#ff4d4d";
-            errorText.style.display = "block";
-            errorText.innerText = "❌ Maksimum 10000 Stars mumkin";
-        } else {
-            input.style.color = "white";
-            errorText.style.display = "none";
-        }
-
-        total.innerText = "Jami: " + (stars * price).toLocaleString() + " so'm";
-        checkForm();
-    };
+    // Display user balance
+    balanceDisplay.innerText = userBalance.toLocaleString() + " so'm";
 
     function checkForm() {
-        let username = document.getElementById("username").value.trim();
-        let stars = Number(input.value);
-        let totalPrice = stars * price;
+        let rawUsername = usernameInput.value.trim();
+        let stars = parseInt(starsInput.value, 10) || 0;
+        let totalPrice = stars * PRICE_PER_STAR;
 
-        if (username !== "" && stars >= 50 && stars <= 10000) {
-            if (totalPrice > userBalance) {
-                errorText.style.display = "block";
-                errorText.innerText = "❌ Balansingizda mablag' yetarli emas!";
-                buyBtn.disabled = true;
-                buyBtn.style.opacity = "0.5";
-            } else {
-                errorText.style.display = "none";
-                buyBtn.disabled = false;
-                buyBtn.style.opacity = "1";
-            }
+        let hasError = false;
+
+        if (stars > 0 && stars < MIN_STARS) {
+            showError(`❌ Minimum ${MIN_STARS} Stars kiriting`);
+            hasError = true;
+        } else if (stars > MAX_STARS) {
+            showError(`❌ Maksimum ${MAX_STARS} Stars mumkin`);
+            hasError = true;
+        } else if (totalPrice > userBalance && stars >= MIN_STARS) {
+            showError("❌ Balansingizda mablag' yetarli emas!");
+            hasError = true;
+        } else {
+            hideError();
+        }
+
+        // Validate complete setup
+        if (!hasError && rawUsername !== "" && stars >= MIN_STARS && stars <= MAX_STARS) {
+            buyBtn.disabled = false;
+            buyBtn.style.opacity = "1";
         } else {
             buyBtn.disabled = true;
             buyBtn.style.opacity = "0.5";
         }
+
+        totalPriceEl.innerText = "Jami: " + totalPrice.toLocaleString() + " so'm";
     }
 
-    document.getElementById("myself").onclick = () => {
-        if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.username) {
-            document.getElementById("username").value = "@" + tg.initDataUnsafe.user.username;
+    function showError(msg) {
+        errorText.style.display = "block";
+        errorText.innerText = msg;
+        starsInput.style.color = "#ff4d4d";
+    }
+
+    function hideError() {
+        errorText.style.display = "none";
+        errorText.innerText = "";
+        starsInput.style.color = "#ffffff";
+    }
+
+    // Event listeners
+    usernameInput.addEventListener("input", () => {
+        let val = usernameInput.value.trim();
+        if (val.length > 0 && !val.startsWith("@")) {
+            usernameInput.value = "@" + val;
+        }
+        checkForm();
+    });
+
+    starsInput.addEventListener("input", checkForm);
+
+    starButtons.forEach(btn => {
+        btn.addEventListener("click", () => {
+            let stars = parseInt(btn.getAttribute("data-stars"), 10);
+            starsInput.value = stars;
+            checkForm();
+        });
+    });
+
+    myselfBtn.addEventListener("click", () => {
+        if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            const user = tg.initDataUnsafe.user;
+            if (user.username) {
+                usernameInput.value = "@" + user.username;
+            } else {
+                usernameInput.value = "ID: " + user.id;
+            }
             checkForm();
         } else {
-            alert("Username topilmadi!");
+            alert("Telegram ma'lumotlari topilmadi!");
         }
-    };
+    });
 
-    buyBtn.onclick = () => {
-        let username = document.getElementById("username").value.trim();
-        let stars = Number(input.value);
-        let totalPrice = stars * price;
+    buyBtn.addEventListener("click", () => {
+        let username = usernameInput.value.trim();
+        let stars = parseInt(starsInput.value, 10);
+        let totalPrice = stars * PRICE_PER_STAR;
         let userId = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user.id : null;
 
         if (totalPrice > userBalance) {
-            alert("Balansingizda mablag' yetarli emas! Iltimos, balansingizni to'ldiring.");
+            alert("Balansingizda mablag' yetarli emas!");
             return;
         }
 
         const order = {
             user_id: userId,
-            username: username,
+            target_username: username,
             stars: stars,
-            total: totalPrice
+            total_price: totalPrice
         };
 
         if (tg && tg.sendData) {
             tg.sendData(JSON.stringify(order));
             tg.close();
         } else {
-            alert("Ushbu tugma faqat Telegram ilovasi ichida ishlaydi!");
+            alert("Ushbu funksiya faqat Telegram Mini App ichida ishlaydi.");
         }
-    };
+    });
 </script>
 
 </body>
