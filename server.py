@@ -9,7 +9,7 @@ CORS(app)
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = "-1004457471821"
-DB_PATH = "bot.db"  # Bazangiz fayli nomi (bot.db)
+DB_PATH = "bot.db"
 
 
 @app.route("/")
