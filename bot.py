@@ -421,9 +421,6 @@ async def back_to_main(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await send_main_menu(update, context)
 
 
-# ==============================================================================
-# --- WEB APP'DAN KELGAN STARS BUYURTMASINI QABUL QILISH VA BALANSDAN YECHISH ---
-# ==============================================================================
 async def webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     msg = update.effective_message
@@ -491,7 +488,6 @@ async def webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
-# --- ADMIN PANEL ---
 async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -744,7 +740,7 @@ if __name__ == "__main__":
         CallbackQueryHandler(admin_panel, pattern="^admin_panel$")
     )
 
-    # Web App dan yuborilgan ma'lumotni ushlab oluvchi handler:
+    # Web App dan yuborilgan ma'lumotni ushlab oluvchi handler
     app.add_handler(
         MessageHandler(filters.StatusUpdate.WEB_APP_DATA, webapp_data)
     )
