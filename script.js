@@ -14,21 +14,24 @@ buyBtn.style.opacity = "0.5";
 
 document.getElementById("username").oninput = checkForm;
 
+// Tezkor tugmalar
 buttons.forEach(btn => {
     btn.onclick = () => {
         let stars = Number(btn.innerText);
         input.value = stars;
-        input.style.color = "white";
-        errorText.style.display = "none";
-        errorText.innerText = "";
-        total.innerText = "Jami: " + (stars * price).toLocaleString() + " so'm";
+        validateStars(stars);
         checkForm();
     };
 });
 
+// Qo'lda kiritish
 input.oninput = () => {
     let stars = parseInt(input.value) || 0;
+    validateStars(stars);
+    checkForm();
+};
 
+function validateStars(stars) {
     if (stars < 50) {
         input.style.color = "#ff4d4d";
         errorText.style.display = "block";
@@ -40,11 +43,10 @@ input.oninput = () => {
     } else {
         input.style.color = "white";
         errorText.style.display = "none";
+        errorText.innerText = "";
     }
-
     total.innerText = "Jami: " + (stars * price).toLocaleString() + " so'm";
-    checkForm();
-};
+}
 
 function checkForm() {
     let username = document.getElementById("username").value.trim();
@@ -58,7 +60,6 @@ function checkForm() {
             buyBtn.disabled = true;
             buyBtn.style.opacity = "0.5";
         } else {
-            errorText.style.display = "none";
             buyBtn.disabled = false;
             buyBtn.style.opacity = "1";
         }
@@ -69,6 +70,11 @@ function checkForm() {
 }
 
 const tg = window.Telegram ? window.Telegram.WebApp : null;
+
+if (tg) {
+    tg.ready();
+    tg.expand();
+}
 
 document.getElementById("myself").onclick = () => {
     if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.username) {
@@ -86,7 +92,7 @@ buyBtn.onclick = async () => {
     let userId = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user.id : null;
 
     if (totalPrice > userBalance) {
-        alert("Balansingizda mablag' yetarli emas! Iltimos, balansingizni to'ldiring.");
+        alert("Balansingizda mablag' yetarli emas!");
         return;
     }
 
@@ -98,8 +104,12 @@ buyBtn.onclick = async () => {
     };
 
     if (tg && tg.sendData) {
-        tg.sendData(JSON.stringify(order));
-        tg.close();
+        try {
+            tg.sendData(JSON.stringify(order));
+            tg.close();
+        } catch (e) {
+            alert("Xatolik yuz berdi: " + e.message);
+        }
     } else {
         alert("Ushbu tugma faqat Telegram ilovasi ichida ishlaydi!");
     }
