@@ -1,5 +1,6 @@
 const price = 225;
 
+// URL parametridan 'balance' qiymatini o'qib olamiz
 const urlParams = new URLSearchParams(window.location.search);
 const userBalance = parseInt(urlParams.get('balance')) || 0;
 
@@ -14,24 +15,25 @@ buyBtn.style.opacity = "0.5";
 
 document.getElementById("username").oninput = checkForm;
 
-// Tezkor tugmalar
 buttons.forEach(btn => {
     btn.onclick = () => {
         let stars = Number(btn.innerText);
+
         input.value = stars;
-        validateStars(stars);
+        input.style.color = "white";
+
+        errorText.style.display = "none";
+        errorText.innerText = "";
+
+        total.innerText = "Jami: " + (stars * price).toLocaleString() + " so'm";
+
         checkForm();
     };
 });
 
-// Qo'lda kiritish
 input.oninput = () => {
     let stars = parseInt(input.value) || 0;
-    validateStars(stars);
-    checkForm();
-};
 
-function validateStars(stars) {
     if (stars < 50) {
         input.style.color = "#ff4d4d";
         errorText.style.display = "block";
@@ -43,10 +45,12 @@ function validateStars(stars) {
     } else {
         input.style.color = "white";
         errorText.style.display = "none";
-        errorText.innerText = "";
     }
+
     total.innerText = "Jami: " + (stars * price).toLocaleString() + " so'm";
-}
+
+    checkForm();
+};
 
 function checkForm() {
     let username = document.getElementById("username").value.trim();
@@ -60,6 +64,7 @@ function checkForm() {
             buyBtn.disabled = true;
             buyBtn.style.opacity = "0.5";
         } else {
+            errorText.style.display = "none";
             buyBtn.disabled = false;
             buyBtn.style.opacity = "1";
         }
@@ -70,11 +75,6 @@ function checkForm() {
 }
 
 const tg = window.Telegram ? window.Telegram.WebApp : null;
-
-if (tg) {
-    tg.ready();
-    tg.expand();
-}
 
 document.getElementById("myself").onclick = () => {
     if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.username) {
@@ -92,7 +92,7 @@ buyBtn.onclick = async () => {
     let userId = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user.id : null;
 
     if (totalPrice > userBalance) {
-        alert("Balansingizda mablag' yetarli emas!");
+        alert("Balansingizda mablag' yetarli emas! Iltimos, balansingizni to'ldiring.");
         return;
     }
 
@@ -103,14 +103,38 @@ buyBtn.onclick = async () => {
         total: totalPrice
     };
 
-    if (tg && tg.sendData) {
-        try {
-            tg.sendData(JSON.stringify(order));
-            tg.close();
-        } catch (e) {
-            alert("Xatolik yuz berdi: " + e.message);
+    // 1. Avvalo API Serverga POST so'rov yuboramiz
+    try {
+        const response = await fetch("https://telegram-stars-olish.onrender.com/order", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(order)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert(result.message || "✅ Buyurtma qabul qilindi!");
+            
+            // Telegram Botga ma'lumot uzatib, so'ng oynani yopamiz
+            if (tg && tg.sendData) {
+                tg.sendData(JSON.stringify(order));
+            } else if (tg) {
+                tg.close();
+            }
+        } else {
+            alert("❌ Xatolik: " + (result.message || "Buyurtma yuborilmadi."));
         }
-    } else {
-        alert("Ushbu tugma faqat Telegram ilovasi ichida ishlaydi!");
+
+    } catch (e) {
+        // Server ishlamay tursa ham botga ma'lumot yuborishga urinish
+        if (tg && tg.sendData) {
+            tg.sendData(JSON.stringify(order));
+            alert("Buyurtmangiz botga yuborildi!");
+        } else {
+            alert("❌ Server bilan bog'lanishda xatolik yuz berdi!");
+        }
     }
 };

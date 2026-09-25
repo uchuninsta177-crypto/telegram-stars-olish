@@ -4,6 +4,7 @@ DB_PATH = "bot.db"
 
 
 def get_connection():
+    """Baza bilan ulanish hosil qilish uchun yordamchi funksiya"""
     return sqlite3.connect(DB_PATH)
 
 
@@ -30,10 +31,12 @@ def add_balance(user_id: int, amount: int, username: str = None):
         )
         row = cursor.fetchone()
 
+        # Username-dan @ belgisini olib tashlaymiz (agar bo'lsa)
         if username and username.startswith("@"):
             username = username[1:]
 
         if row:
+            # Balans manfiyga tushib ketmasligini ta'minlaymiz
             new_balance = max(0, row[0] + amount)
             if username:
                 cursor.execute(
@@ -65,11 +68,13 @@ def get_balance(user_id: int) -> int:
 
 
 def get_user_id_by_input(user_input: str):
+    """ID yoki @username orqali foydalanuvchining ID sini topish"""
     user_input = user_input.strip()
 
     with get_connection() as conn:
         cursor = conn.cursor()
 
+        # Agar faqat raqam kiritilgan bo'lsa (User ID)
         if user_input.isdigit():
             user_id = int(user_input)
             cursor.execute(
@@ -78,6 +83,7 @@ def get_user_id_by_input(user_input: str):
             row = cursor.fetchone()
             return row[0] if row else None
 
+        # Agar @username kiritilgan bo'lsa
         if user_input.startswith("@"):
             user_input = user_input[1:]
 

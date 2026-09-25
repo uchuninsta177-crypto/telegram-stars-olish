@@ -1,18 +1,10 @@
 import html
 import json
 import logging
-import os
 import warnings
 
 from database import add_balance, get_balance, get_user_id_by_input, init_db
-from telegram import (
-    InlineKeyboardButton,
-    InlineKeyboardMarkup,
-    KeyboardButton,
-    ReplyKeyboardMarkup,
-    Update,
-    WebAppInfo,
-)
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, WebAppInfo
 from telegram.ext import (
     ApplicationBuilder,
     CallbackQueryHandler,
@@ -31,7 +23,7 @@ logging.basicConfig(
 )
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-GROUP_ID = -1004457471821
+GROUP_ID = -1004457471821  # O'zingizning guruh ID ingizni kiriting (Masalan: -1001234567890)
 ADMIN_ID = 8061937333
 
 BANK_NAME = "Kapitalbank"
@@ -76,44 +68,38 @@ async def send_main_menu(
 
     web_app_url = f"https://uchuninsta177-crypto.github.io/telegram-stars-olish/?balance={user_balance}"
 
-    # Pastki (Reply) keyboard - tg.sendData ishlashi uchun
-    reply_keyboard = [
-        [KeyboardButton("⭐️ Stars olish", web_app=WebAppInfo(url=web_app_url))]
-    ]
-
-    # Inline tugmalar
-    inline_keyboard = [
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                "⭐️ Stars olish",
+                web_app=WebAppInfo(url=web_app_url),
+            )
+        ],
         [InlineKeyboardButton("🎁 Gift olish", callback_data="show_gifts")],
-        [InlineKeyboardButton("💳 Balans to'ldirish", callback_data="topup_balance")],
+        [
+            InlineKeyboardButton(
+                "💳 Balans to'ldirish", callback_data="topup_balance"
+            )
+        ],
     ]
 
     if user.id == ADMIN_ID:
-        inline_keyboard.append(
+        keyboard.append(
             [InlineKeyboardButton("⚙️ Admin Panel", callback_data="admin_panel")]
         )
 
     msg_text = (
         f"{text_prefix}Salom, <b>{html.escape(user.first_name)}</b>! 👋\n\n"
-        f"💳 <b>Balansingiz:</b> {user_balance:,} so'm\n\n"
-        f"⭐️ <b>Stars olish uchun pastdagi 'Stars olish' tugmasini bosing!</b>"
+        f"💳 <b>Balansingiz:</b> {user_balance:,} so'm\n\nKerakli xizmatni tanlang:"
     )
 
     if update.callback_query:
         await update.callback_query.message.reply_text(
-            msg_text,
-            reply_markup=InlineKeyboardMarkup(inline_keyboard),
-            parse_mode="HTML",
+            msg_text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="HTML"
         )
     else:
-        # Birinchi bo'lib pastki menyuni ochamiz
         await update.message.reply_text(
-            "👇 Web App orqali buyurtma berish uchun tugma faollashtirildi:",
-            reply_markup=ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True),
-        )
-        await update.message.reply_text(
-            msg_text,
-            reply_markup=InlineKeyboardMarkup(inline_keyboard),
-            parse_mode="HTML",
+            msg_text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="HTML"
         )
 
 
@@ -134,9 +120,11 @@ async def cancel_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data.clear()
     user = update.effective_user
     add_balance(user.id, 0, user.username)
     await send_main_menu(update, context)
+    return ConversationHandler.END
 
 
 async def topup_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -247,7 +235,11 @@ async def show_gifts(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("💝 🧸 (15 Stars)", callback_data="cat_15")],
         [InlineKeyboardButton("🌹 🎁 (25 Stars)", callback_data="cat_25")],
-        [InlineKeyboardButton("💐 🎂 🍾 🚀 (50 Stars)", callback_data="cat_50")],
+        [
+            InlineKeyboardButton(
+                "💐 🎂 🍾 🚀 (50 Stars)", callback_data="cat_50"
+            )
+        ],
         [InlineKeyboardButton("💍 🏆 💎 (100 Stars)", callback_data="cat_100")],
         [InlineKeyboardButton("⬅️ Orqaga", callback_data="back_to_main")],
     ]
@@ -274,9 +266,13 @@ async def select_gift_category(
             InlineKeyboardButton("🎁 Sovg'a quti", callback_data="item_box_25"),
         ],
         "cat_50": [
-            InlineKeyboardButton("💐 Buket", callback_data="item_bouquet_50"),
+            InlineKeyboardButton(
+                "💐 Buket", callback_data="item_bouquet_50"
+            ),
             InlineKeyboardButton("🎂 Tort", callback_data="item_cake_50"),
-            InlineKeyboardButton("🍾 Shampan", callback_data="item_champagne_50"),
+            InlineKeyboardButton(
+                "🍾 Shampan", callback_data="item_champagne_50"
+            ),
             InlineKeyboardButton("🚀 Raketa", callback_data="item_rocket_50"),
         ],
         "cat_100": [
@@ -306,8 +302,16 @@ async def show_gift_details(
     if item_key in GIFTS_DB:
         gift_name, stars, price_som = GIFTS_DB[item_key]
         keyboard = [
-            [InlineKeyboardButton("✅ Sotib olish", callback_data=f"buy_{item_key}")],
-            [InlineKeyboardButton("⬅️ Orqaga", callback_data=f"cat_{stars}")],
+            [
+                InlineKeyboardButton(
+                    "✅ Sotib olish", callback_data=f"buy_{item_key}"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "⬅️ Orqaga", callback_data=f"cat_{stars}"
+                )
+            ],
         ]
         await query.edit_message_text(
             f"🎁 <b>Siz tanlagan gift:</b> {gift_name}\n⭐️ <b>Narxi:</b> {price_som} so'm\n\nSotib olishni tasdiqlaysizmi?",
@@ -353,8 +357,16 @@ async def process_gift_purchase(
 
     if user_balance < price_som:
         keyboard = [
-            [InlineKeyboardButton("💳 Balans to'ldirish", callback_data="topup_balance")],
-            [InlineKeyboardButton("🎁 Giftlar bo'limi", callback_data="show_gifts")],
+            [
+                InlineKeyboardButton(
+                    "💳 Balans to'ldirish", callback_data="topup_balance"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "🎁 Giftlar bo'limi", callback_data="show_gifts"
+                )
+            ],
         ]
         await update.message.reply_text(
             f"❌ <b>Mablag' yetarli emas!</b>\n\n🎁 Gift narxi: {price_som:,} so'm\n💳 Sizning balansingiz: {user_balance:,} so'm",
@@ -407,7 +419,6 @@ async def back_to_main(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await send_main_menu(update, context)
 
 
-# Web App dan ma'lumot kelganda javob beruvchi handler
 async def webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     msg = update.effective_message
@@ -421,7 +432,9 @@ async def webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         total_price = int(data.get("total", 0))
         stars_count = int(data.get("stars", 0))
-        target_user = str(data.get("username", user.username or "")).strip()
+        target_user = str(
+            data.get("username", user.username or "")
+        ).strip()
 
         if target_user and not target_user.startswith("@"):
             target_user = f"@{target_user}"
@@ -468,7 +481,9 @@ async def webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
         logging.error(f"Web App ma'lumotida xatolik: {e}")
-        await msg.reply_text("❌ Xatolik yuz berdi! Qaytadan urinib ko'ring.")
+        await msg.reply_text(
+            "❌ Xatolik yuz berdi! Qaytadan urinib ko'ring."
+        )
 
 
 async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -477,8 +492,16 @@ async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if query.from_user.id != ADMIN_ID:
         return
     keyboard = [
-        [InlineKeyboardButton("➕ Balans qo'shish", callback_data="add_balance")],
-        [InlineKeyboardButton("➖ Balans ayirish", callback_data="remove_balance")],
+        [
+            InlineKeyboardButton(
+                "➕ Balans qo'shish", callback_data="add_balance"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "➖ Balans ayirish", callback_data="remove_balance"
+            )
+        ],
         [InlineKeyboardButton("⬅️ Bosh menyu", callback_data="back_to_main")],
     ]
     await query.edit_message_text(
@@ -615,7 +638,9 @@ async def receive_remove_amount(
 if __name__ == "__main__":
     init_db()
     app = ApplicationBuilder().token(BOT_TOKEN).build()
+    
     common_fallbacks = [
+        CommandHandler("start", start),
         CallbackQueryHandler(cancel_action, pattern="^cancel_action$")
     ]
 
@@ -637,7 +662,6 @@ if __name__ == "__main__":
             ],
         },
         fallbacks=common_fallbacks,
-        per_message=False,
     )
 
     buy_gift_handler = ConversationHandler(
@@ -652,12 +676,13 @@ if __name__ == "__main__":
             ],
         },
         fallbacks=common_fallbacks,
-        per_message=False,
     )
 
     add_balance_handler = ConversationHandler(
         entry_points=[
-            CallbackQueryHandler(add_balance_start, pattern="^add_balance$")
+            CallbackQueryHandler(
+                add_balance_start, pattern="^add_balance$"
+            )
         ],
         states={
             WAIT_ADD_USER: [
@@ -672,12 +697,13 @@ if __name__ == "__main__":
             ],
         },
         fallbacks=common_fallbacks,
-        per_message=False,
     )
 
     remove_balance_handler = ConversationHandler(
         entry_points=[
-            CallbackQueryHandler(remove_balance_start, pattern="^remove_balance$")
+            CallbackQueryHandler(
+                remove_balance_start, pattern="^remove_balance$"
+            )
         ],
         states={
             WAIT_REMOVE_USER: [
@@ -692,7 +718,6 @@ if __name__ == "__main__":
             ],
         },
         fallbacks=common_fallbacks,
-        per_message=False,
     )
 
     app.add_handler(CommandHandler("start", start))
@@ -711,7 +736,6 @@ if __name__ == "__main__":
         CallbackQueryHandler(admin_panel, pattern="^admin_panel$")
     )
 
-    # WebApp hodisasini tutuvchi xabar
     app.add_handler(
         MessageHandler(filters.StatusUpdate.WEB_APP_DATA, webapp_data)
     )
