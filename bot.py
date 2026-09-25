@@ -1,6 +1,7 @@
 import html
 import json
 import logging
+import os
 import warnings
 
 from database import add_balance, get_balance, get_user_id_by_input, init_db
@@ -518,9 +519,9 @@ async def add_balance_start(
     if query.from_user.id != ADMIN_ID:
         return ConversationHandler.END
     await query.message.reply_text(
-        "👤 Foydalanuvchining **User ID** yoki **@username** ini yuboring:",
+        "👤 Foydalanuvchining <b>User ID</b> yoki <b>@username</b> ini yuboring:",
         reply_markup=CANCEL_KEYBOARD,
-        parse_mode="Markdown",
+        parse_mode="HTML",
     )
     return WAIT_ADD_USER
 
@@ -584,9 +585,9 @@ async def remove_balance_start(
     if query.from_user.id != ADMIN_ID:
         return ConversationHandler.END
     await query.message.reply_text(
-        "👤 Foydalanuvchining **User ID** yoki **@username** ini yuboring:",
+        "👤 Foydalanuvchining <b>User ID</b> yoki <b>@username</b> ini yuboring:",
         reply_markup=CANCEL_KEYBOARD,
-        parse_mode="Markdown",
+        parse_mode="HTML",
     )
     return WAIT_REMOVE_USER
 
