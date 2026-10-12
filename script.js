@@ -1,9 +1,5 @@
 const price = 225;
 
-// URL parametridan 'balance' qiymatini o'qib olamiz
-const urlParams = new URLSearchParams(window.location.search);
-const userBalance = parseInt(urlParams.get('balance')) || 0;
-
 const buttons = document.querySelectorAll(".star-btn");
 const total = document.getElementById("totalPrice");
 const input = document.getElementById("customStars");
@@ -25,9 +21,9 @@ buttons.forEach(btn => {
         errorText.style.display = "none";
         errorText.innerText = "";
 
-        total.innerText = "Jami: " + (stars * price).toLocaleString() + " so'm";
-
         checkForm();
+
+        total.innerText = "Jami: " + (stars * price).toLocaleString() + " so'm";
     };
 });
 
@@ -55,19 +51,10 @@ input.oninput = () => {
 function checkForm() {
     let username = document.getElementById("username").value.trim();
     let stars = Number(input.value);
-    let totalPrice = stars * price;
 
     if (username !== "" && stars >= 50 && stars <= 10000) {
-        if (totalPrice > userBalance) {
-            errorText.style.display = "block";
-            errorText.innerText = "❌ Balansingizda mablag' yetarli emas!";
-            buyBtn.disabled = true;
-            buyBtn.style.opacity = "0.5";
-        } else {
-            errorText.style.display = "none";
-            buyBtn.disabled = false;
-            buyBtn.style.opacity = "1";
-        }
+        buyBtn.disabled = false;
+        buyBtn.style.opacity = "1";
     } else {
         buyBtn.disabled = true;
         buyBtn.style.opacity = "0.5";
@@ -91,11 +78,6 @@ buyBtn.onclick = async () => {
     let totalPrice = stars * price;
     let userId = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user.id : null;
 
-    if (totalPrice > userBalance) {
-        alert("Balansingizda mablag' yetarli emas! Iltimos, balansingizni to'ldiring.");
-        return;
-    }
-
     const order = {
         user_id: userId,
         username: username,
@@ -103,7 +85,6 @@ buyBtn.onclick = async () => {
         total: totalPrice
     };
 
-    // 1. Avvalo API Serverga POST so'rov yuboramiz
     try {
         const response = await fetch("https://telegram-stars-olish.onrender.com/order", {
             method: "POST",
@@ -114,27 +95,9 @@ buyBtn.onclick = async () => {
         });
 
         const result = await response.json();
-
-        if (result.success) {
-            alert(result.message || "✅ Buyurtma qabul qilindi!");
-            
-            // Telegram Botga ma'lumot uzatib, so'ng oynani yopamiz
-            if (tg && tg.sendData) {
-                tg.sendData(JSON.stringify(order));
-            } else if (tg) {
-                tg.close();
-            }
-        } else {
-            alert("❌ Xatolik: " + (result.message || "Buyurtma yuborilmadi."));
-        }
+        alert(result.message);
 
     } catch (e) {
-        // Server ishlamay tursa ham botga ma'lumot yuborishga urinish
-        if (tg && tg.sendData) {
-            tg.sendData(JSON.stringify(order));
-            alert("Buyurtmangiz botga yuborildi!");
-        } else {
-            alert("❌ Server bilan bog'lanishda xatolik yuz berdi!");
-        }
+        alert("Server bilan bog'lanib bo'lmadi!");
     }
 };

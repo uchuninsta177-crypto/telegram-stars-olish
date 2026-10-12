@@ -10,7 +10,6 @@ body {
     color: white;
     padding: 20px;
     user-select: none;
-    -webkit-user-select: none;
 }
 
 .header {

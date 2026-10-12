@@ -20,7 +20,7 @@ from telegram.warnings import PTBUserWarning
 warnings.filterwarnings("ignore", category=PTBUserWarning)
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+BOT_TOKEN = "8734389060:AAFFINSeeEs-8V-Is6IQvC4x7qivIpEpOOs"
 GROUP_ID = -1001234567890  # O'zingizning to'g'ri guruh ID-ingizni kiriting (-100 bilan boshlanadi)
 ADMIN_ID = 8061937333
 
