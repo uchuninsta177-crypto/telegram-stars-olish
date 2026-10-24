@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Stars, Premium va Gift</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{--bg:#0e1726;--card:#182338;--line:#2a3856;--text:#eaf0fb;--muted:#8fa0bf;--star:#f5b942;--act:#3d8bff;--bad:#ff6b6b}
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{background:var(--bg);color:var(--text);padding:16px 16px 120px;-webkit-tap-highlight-color:transparent}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+h1{font-size:20px;font-weight:700}
+#bal{font-size:13px;color:var(--muted);background:var(--card);border:1px solid var(--line);border-radius:20px;padding:6px 12px}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);background:var(--card);border:1px solid var(--line);border-radius:14px;padding:4px;margin-bottom:16px}
+.tabs button{border:0;background:none;color:var(--muted);font-size:15px;font-weight:600;padding:10px 4px;border-radius:10px}
+.tabs button.on{background:var(--act);color:#fff}
+.panel{display:none}.panel.on{display:block}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.grid.two{grid-template-columns:repeat(2,1fr)}
+.opt{background:var(--card);border:1px solid var(--line);color:var(--text);border-radius:12px;padding:12px 6px;font-size:15px;font-weight:600;text-align:center}
+.opt small{display:block;color:var(--muted);font-size:12px;font-weight:400;margin-top:3px}
+.opt.on{border-color:var(--star);box-shadow:inset 0 0 0 1px var(--star)}
+label{display:block;font-size:13px;color:var(--muted);margin:14px 0 6px}
+input{width:100%;background:var(--card);border:1px solid var(--line);color:var(--text);border-radius:12px;padding:13px 14px;font-size:16px;outline:none}
+input:focus{border-color:var(--act)}
+.row{display:flex;gap:8px}
+.me{flex:none;background:none;border:1px solid var(--act);color:var(--act);border-radius:12px;padding:0 14px;font-size:14px;font-weight:600}
+#err{color:var(--bad);font-size:13px;min-height:18px;margin-top:8px}
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-top:1px solid var(--line);padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px))}
+#sum{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+#what{color:var(--muted);font-size:14px}
+#total{font-size:24px;font-weight:800;color:var(--star)}
+#buy{width:100%;border:0;border-radius:14px;background:var(--act);color:#fff;font-size:17px;font-weight:700;padding:15px}
+#buy:disabled{opacity:.4}
+button:focus-visible,input:focus-visible{outline:2px solid var(--star);outline-offset:2px}
+</style>
+</head>
+<body>
+<header><h1>Do'kon</h1><div id="bal" hidden></div></header>
+
+<div class="tabs" role="tablist">
+  <button data-tab="stars" class="on">Stars</button>
+  <button data-tab="premium">Premium</button>
+  <button data-tab="gift">Gift</button>
+</div>
+
+<section class="panel on" id="p-stars">
+  <div class="grid" id="chips"></div>
+  <label for="n">Yoki miqdorni o'zingiz kiriting (50 – 10 000)</label>
+  <input id="n" type="number" inputmode="numeric" min="50" max="10000" placeholder="Masalan: 300">
+</section>
+<section class="panel" id="p-premium"><div class="grid" id="months"></div></section>
+<section class="panel" id="p-gift"><div class="grid two" id="gifts"></div></section>
+
+<label for="u">Qabul qiluvchi username</label>
+<div class="row">
+  <input id="u" type="text" placeholder="@username" autocapitalize="off" autocorrect="off" spellcheck="false">
+  <button class="me" id="me" type="button">O'zimga</button>
+</div>
+<div id="err" role="alert"></div>
+
+<div class="bar">
+  <div id="sum"><span id="what">Tanlang</span><span id="total">0 so'm</span></div>
+  <button id="buy" disabled>Buyurtma berish</button>
+</div>
+
+<script>
+const tg = window.Telegram ? window.Telegram.WebApp : null;
+if (tg) { tg.ready(); tg.expand(); }
+const q = new URLSearchParams(location.search);
+
+// Narxlar bot tomonidan havola orqali beriladi (sp, pp). Bo'lmasa — quyidagi standart qiymatlar.
+const STAR_PRICE = parseInt(q.get("sp")) || 225;
+const PREMIUM = {3: 175000, 6: 235000, 12: 420000};
+(q.get("pp") || "").split(",").forEach(x => { const [m, p] = x.split(":").map(Number); if (PREMIUM[m] && p > 0) PREMIUM[m] = p; });
+const GIFTS = [
+  ["item_heart_15", "💝 Yurak", 15, 3500], ["item_bear_15", "🧸 Ayiqcha", 15, 3500],
+  ["item_rose_25", "🌹 Atirgul", 25, 5500], ["item_box_25", "🎁 Sovg'a quti", 25, 5500],
+  ["item_bouquet_50", "💐 Buket", 50, 11000], ["item_cake_50", "🎂 Tort", 50, 11000],
+  ["item_champagne_50", "🍾 Shampan", 50, 11000], ["item_rocket_50", "🚀 Raketa", 50, 11000],
+  ["item_ring_100", "💍 Uzuk", 100, 22000], ["item_trophy_100", "🏆 Kubok", 100, 22000],
+  ["item_diamond_100", "💎 Olmos", 100, 22000]
+];
+const balance = q.has("balance") ? parseInt(q.get("balance")) || 0 : null;
+const fmt = n => n.toLocaleString("ru-RU").replace(/\u00a0/g, " ");
+const $ = id => document.getElementById(id);
+
+let tab = "stars", stars = 0, months = 0, gift = null;
+
+function mk(parent, html, cls, onclick) {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = cls; b.innerHTML = html; b.onclick = onclick;
+  parent.appendChild(b); return b;
+}
+[50, 100, 250, 500, 1000, 2500].forEach(n => mk($("chips"), n + "<small>" + fmt(n * STAR_PRICE) + " so'm</small>", "opt", () => { stars = n; $("n").value = n; update(); }));
+Object.keys(PREMIUM).forEach(m => mk($("months"), m + " oy<small>" + fmt(PREMIUM[m]) + " so'm</small>", "opt", () => { months = +m; update(); }));
+GIFTS.forEach(g => mk($("gifts"), g[1] + "<small>" + g[2] + " stars · " + fmt(g[3]) + " so'm</small>", "opt", () => { gift = g; update(); }));
+
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => { tab = b.dataset.tab; update(); });
+$("n").oninput = () => { stars = parseInt($("n").value) || 0; update(); };
+$("u").oninput = update;
+$("me").onclick = () => {
+  const u = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
+  if (u && u.username) { $("u").value = "@" + u.username; update(); }
+  else $("err").textContent = "Sizda username yo'q. Qo'lda kiriting.";
+};
+
+function current() {
+  if (tab === "stars") return stars >= 50 && stars <= 10000 ? {label: stars + " ta Stars", price: stars * STAR_PRICE, data: {t: "stars", n: stars}} : null;
+  if (tab === "premium") return months ? {label: months + " oy Premium", price: PREMIUM[months], data: {t: "premium", m: months}} : null;
+  return gift ? {label: gift[1], price: gift[3], data: {t: "gift", g: gift[0]}} : null;
+}
+
+function update() {
+  document.querySelectorAll(".tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === tab));
+  document.querySelectorAll(".panel").forEach(p => p.classList.toggle("on", p.id === "p-" + tab));
+  document.querySelectorAll("#chips .opt").forEach((b, i) => b.classList.toggle("on", [50, 100, 250, 500, 1000, 2500][i] === stars));
+  document.querySelectorAll("#months .opt").forEach((b, i) => b.classList.toggle("on", +Object.keys(PREMIUM)[i] === months));
+  document.querySelectorAll("#gifts .opt").forEach((b, i) => b.classList.toggle("on", gift === GIFTS[i]));
+
+  const c = current(), name = $("u").value.trim().replace(/^@/, "");
+  const nameOk = /^[A-Za-z0-9_]{4,32}$/.test(name);
+  $("what").textContent = c ? c.label : "Tanlang";
+  $("total").textContent = (c ? fmt(c.price) : "0") + " so'm";
+
+  let err = "";
+  if (tab === "stars" && $("n").value && !c) err = "Stars miqdori 50 dan 10 000 gacha bo'lishi kerak.";
+  else if (name && !nameOk) err = "Username noto'g'ri. Masalan: @username";
+  else if (c && balance !== null && c.price > balance) err = "Balansingizda mablag' yetarli emas. Avval balansni to'ldiring.";
+  $("err").textContent = err;
+  $("buy").disabled = !(c && nameOk && !err);
+}
+
+$("buy").onclick = () => {
+  const c = current(); if (!c) return;
+  const order = Object.assign({u: "@" + $("u").value.trim().replace(/^@/, "")}, c.data);
+  if (tg && tg.sendData) tg.sendData(JSON.stringify(order));
+  else $("err").textContent = "Bu tugma faqat Telegram ichida ishlaydi.";
+};
+
+if (balance !== null) { $("bal").hidden = false; $("bal").textContent = "Balans: " + fmt(balance) + " so'm"; }
+update();
+</script>
+</body>
+</html>
